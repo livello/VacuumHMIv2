@@ -29,11 +29,13 @@ SCK (Serial Clock)  ->  A5 on Uno/Pro-Mini, 21 on Mega2560/Due, 3 Leonardo/Pro-M
 #include <TimeLib.h>
 #include <DS1307RTC.h>
 #include "Ethernet.h"
+#include "personal_data.h"
+#ifndef PERSONAL_DATA_H
+#define my_personal_mac_address {0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED}
+#endif
 
 #define SERIAL_BAUD 115200
-byte mac[] = {
-        0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED
-};
+byte mac[] = my_personal_mac_address;
 IPAddress ip(192, 168, 3, 177);
 EthernetServer server(80);
 tmElements_t tm;
