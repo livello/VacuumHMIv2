@@ -30,6 +30,7 @@ SCK (Serial Clock)  ->  A5 on Uno/Pro-Mini, 21 on Mega2560/Due, 3 Leonardo/Pro-M
 #include <DS1307RTC.h>
 #include "Ethernet.h"
 #include "personal_data.h"
+
 #ifndef PERSONAL_DATA_H
 #define my_personal_mac_address {0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED}
 #endif
@@ -56,7 +57,7 @@ void ethernet_setup() {
 }
 
 void setup() {
-    Serial.println("DS1307RTC Read Test");
+    Serial.println("DS1307RTC new Read Test");
     Serial.println("-------------------");
     Serial.begin(SERIAL_BAUD);
 
