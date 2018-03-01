@@ -57,7 +57,7 @@ void ethernet_setup() {
 }
 
 void setup() {
-    Serial.println("DS1307RTC new Read Test");
+    Serial.println("DS1307RTC Read Test");
     Serial.println("-------------------");
     Serial.begin(SERIAL_BAUD);
 
