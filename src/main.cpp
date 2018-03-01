@@ -28,17 +28,31 @@ SCK (Serial Clock)  ->  A5 on Uno/Pro-Mini, 21 on Mega2560/Due, 3 Leonardo/Pro-M
 #include "SPI.h"
 #include <TimeLib.h>
 #include <DS1307RTC.h>
+#include "Ethernet.h"
 
 #define SERIAL_BAUD 115200
-
-
+byte mac[] = {
+        0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED
+};
+IPAddress ip(192, 168, 3, 177);
+EthernetServer server(80);
 tmElements_t tm;
 
 
 BME280I2C bme;    // Default : forced mode, standby time = 1000 ms
+BME280::TempUnit tempUnit(BME280::TempUnit_Celsius);
+BME280::PresUnit presUnit(BME280::PresUnit_Pa);
 // Oversampling = pressure ×1, temperature ×1, humidity ×1, filter off,
+float temp(NAN), hum(NAN), pres(NAN);
 
 //////////////////////////////////////////////////////////////////
+void ethernet_setup() {
+    Ethernet.begin(mac, 15000);
+    server.begin();
+    Serial.print("server is at ");
+    Serial.println(Ethernet.localIP());
+}
+
 void setup() {
     Serial.println("DS1307RTC Read Test");
     Serial.println("-------------------");
@@ -63,6 +77,85 @@ void setup() {
         default:
             Serial.println("Found UNKNOWN sensor! Error!");
     }
+    ethernet_setup();
+}
+
+void ethernet_loop() {
+    // listen for incoming clients
+    EthernetClient client = server.available();
+    if (client) {
+        Serial.println("new client");
+        // an http request ends with a blank line
+        boolean currentLineIsBlank = true;
+        while (client.connected()) {
+            if (client.available()) {
+                char c = client.read();
+                Serial.write(c);
+                // if you've gotten to the end of the line (received a newline
+                // character) and the line is blank, the http request has ended,
+                // so you can send a reply
+                if (c == '\n' && currentLineIsBlank) {
+                    // send a standard http response header
+                    client.println("HTTP/1.1 200 OK");
+                    client.println("Content-Type: text/html");
+                    client.println(
+                            "Connection: close");  // the connection will be closed after completion of the response
+                    client.println("Refresh: 5");  // refresh the page automatically every 5 sec
+                    client.println();
+                    client.println("<!DOCTYPE HTML>");
+                    client.println("<html>");
+                    // output the value of each analog input pin
+                    client.println("Temp: ");
+                    client.println(temp);
+                    client.println("°" + String(tempUnit == BME280::TempUnit_Celsius ? 'C' : 'F'));
+                    client.println("\t\tHumidity: ");
+                    client.println(hum);
+                    client.println("% RH");
+                    client.println("\t\tPressure: ");
+                    client.println(pres);
+                    client.println(" Pa");
+                    client.println("<br />");
+                    if (RTC.read(tm)) {
+                        Serial.print("Ok, Time = ");
+                        client.print(tm.Hour);
+                        client.print(':');
+                        client.print(tm.Minute);
+                        client.print(':');
+                        client.print(tm.Second);
+                        client.print(", Date (D/M/Y) = ");
+                        client.print(tm.Day);
+                        client.print('/');
+                        client.print(tm.Month);
+                        client.print('/');
+                        client.print(tmYearToCalendar(tm.Year));
+                        client.println("<br />");
+                    } else {
+                        if (RTC.chipPresent()) {
+                            client.println("The DS1307 is stopped.  Please run the SetTime");
+                            client.println("example to initialize the time and begin running.");
+                        } else {
+                            client.println("DS1307 read error!  Please check the circuitry.");
+                        }
+                        client.println("<br />");
+                    }
+                    client.println("</html>");
+                    break;
+                }
+                if (c == '\n') {
+                    // you're starting a new line
+                    currentLineIsBlank = true;
+                } else if (c != '\r') {
+                    // you've gotten a character on the current line
+                    currentLineIsBlank = false;
+                }
+            }
+        }
+        // give the web browser time to receive the data
+        delay(1);
+        // close the connection:
+        client.stop();
+        Serial.println("client disconnected");
+    }
 }
 
 //////////////////////////////////////////////////////////////////
@@ -70,10 +163,7 @@ void printBME280Data
         (
                 Stream *client
         ) {
-    float temp(NAN), hum(NAN), pres(NAN);
 
-    BME280::TempUnit tempUnit(BME280::TempUnit_Celsius);
-    BME280::PresUnit presUnit(BME280::PresUnit_Pa);
 
     bme.read(pres, temp, hum, tempUnit, presUnit);
 
@@ -146,5 +236,6 @@ void rtc_loop() {
 void loop() {
     printBME280Data(&Serial);
     rtc_loop();
+    ethernet_loop();
     delay(500);
 }
