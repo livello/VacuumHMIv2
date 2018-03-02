@@ -1,388 +1,234 @@
-// UTouch_ButtonTest (C)2010-2014 Henning Karlsen
 
-// web: http://www.henningkarlsen.com/electronics
-
+//#define DHTPIN 8    // пин для датчика DHT22
+//#define DHTTYPE DHT11   // DHT 11
+#define ONEWIRE_PIN 7
 //
-
-// This program is a quick demo of how create and use buttons.
-
-//
-
-// This program requires the UTFT library.
-
-//
-
-// It is assumed that the display module is connected to an
-
-// appropriate shield or that you know how to change the pin
-
-// numbers in the setup.
-
-//
-
 
 #include "Arduino.h"
-#include "HardwareSerial.h"
-
-#include <UTFT.h>
-
-#include <UTouch.h>
-
-#define dX 8
-
-#define dY 6
-
-#define TICK 50
-
-#define ACTIVE_PROC_REPAINT_DELAY 500
-
-void printMs(int column, int row);
-void drawButton(int column, int row);
-void tick();
-void  activateProc(int proc_num, boolean enable);
-void drawAdjButtons();
-void clickAdjButton(int i);
-
-
-UTFT myGLCD(ILI9327_8, 38, 39, 40, 41);
-
-UTouch  myTouch( 6, 5, 4, 3, 2);
-
-
-
-extern uint8_t BigFont[];
-
-
-
-int x, y;
-
-char stCurrent[20] = "";
-
-int stCurrentLen = 0;
-
-int selectedButton = 0, lastSelectedButton = -1;
-
-char stLast[20] = "";
-
-const char buttonLabel[][ 6 ][ 7 ] = {"HAXPEB", "CTOL", "BAKYYM", "XOLOD", "BO3DYX"};
-
-const char adjLabel[][ 3 ][ 5 ] = {"+500", "+100", "-500"};
-
-const int ADJ_DELTA[6] = {500, 100, -500};
-
-
-
-volatile long int PROC_DURATION_MS[6] = {30000, 30000, 30000, 30000, 500, 0}; //Длительность процессов
-
-const int RELAY[6] = {8, 9, 10, 11, 12, 13};
-
-long int procTimeLeft[6] = {0, 0, 0, 0, 0, 0};
-
-unsigned long last_tick = 0, last_repaint = 0;
-
-boolean procActive[6] = {false, false, false, false, false, false};
-
-boolean repainted = false;
-
-volatile boolean duration_changed = false;
-
-
-
-void drawButton(int column, int row)
-
-{
-
-  if (selectedButton == column + row * 2)
-
-    myGLCD.setColor(VGA_YELLOW);
-
-  else
-
-    myGLCD.setColor(VGA_BLACK);
-
-  myGLCD.fillRoundRect (column * 160 + dX / 2, 80 * row + dY / 2, column * 160 + 160 - dX / 2, 80 * row + 80 - dY / 2);
-
-  if (procActive[column + row * 2])
-
-    myGLCD.setColor(VGA_RED);
-
-  else
-
-    myGLCD.setColor(VGA_BLUE);
-
-  myGLCD.fillRoundRect (column * 160 + dX, 80 * row + dY, column * 160 + 160 - dX, 80 * row + 80 - dY);
-
-  myGLCD.setColor(255, 255, 255);
-
-  myGLCD.print(buttonLabel[0][column + row * 2], column * 160 + dX + 10, 80 * row + dY);
-
-  printMs(column, row);
-
-  //  myGLCD.printNumI(column, column * 200 + dX + 10, 80 * row + dY);
-
-}
-
-void printMs(int column, int row)
-
-{ if (procActive[column + row * 2])
-
-    myGLCD.printNumI(procTimeLeft[column + row * 2], column * 160 + dX + 40, 80 * row + dY + 20);
-
-  else
-
-    myGLCD.printNumI(PROC_DURATION_MS[column + row * 2], column * 160 + dX + 40, 80 * row + dY + 20);
-
-}
-
-void tick()
-
-{
-
-  for (int i = 0; i < 6; i++) {
-
-    if (procTimeLeft[i] > 0) {
-
-      procTimeLeft[i] = procTimeLeft[i] - (millis() - last_tick);
-
-    }
-
-  }
-
-  last_tick = millis();
-
-  for (int i = 0; i < 6; i++) {
-
-    if (procTimeLeft[i] <= 0 && procActive[i]) {
-
-      activateProc(i, false);
-
-    }
-
-    if (procActive[i] && millis() > last_repaint) {
-
-      repainted = true;
-
-      printMs(i % 2, (int)(i / 2));
-
-    }
-
-  }
-
-  if (millis() > last_repaint && duration_changed) {
-
-    if (PROC_DURATION_MS[selectedButton] < 0)
-
-      PROC_DURATION_MS[selectedButton] = -PROC_DURATION_MS[selectedButton];
-
-    printMs(selectedButton % 2, (int)(selectedButton / 2));
-
-    repainted = true;
-
-    duration_changed = false;
-
-  }
-
-  if (repainted) {
-
-    last_repaint  = millis() + ACTIVE_PROC_REPAINT_DELAY;
-
-    repainted = false;
-
-  }
-
-
-
-}
-
-void  activateProc(int proc_num, boolean enable)
-
-{
-
-  if (procActive[proc_num] != enable) {
-
-    if (enable) {
-
-      digitalWrite(RELAY[proc_num], LOW);
-
-      procTimeLeft[proc_num] = PROC_DURATION_MS[proc_num];
-
-    }
-
-    else
-
-    {
-
-      digitalWrite(RELAY[proc_num], HIGH);
-
-      procTimeLeft[proc_num] = 0;
-
-    }
-
-    procActive[proc_num] = enable;
-
-    drawButton(proc_num % 2, (int)(proc_num / 2));
-
-  }
-
-
-
-}
-
-void loop()
-
-{
-
-  while (true)
-
-  {
-
-    if (myTouch.dataAvailable())
-
-    {
-
-      myTouch.read();
-
-      if (myTouch.getX() == -1 || myTouch.getY() == -1)
-
-        continue;
-
-      if (myTouch.getX() <= 320)
-
-      {
-
-        selectedButton = -1;
-
-        drawButton(x, y);
-
-        x = (int)(myTouch.getX() / 160);
-
-        y = (int)(myTouch.getY() / 80);
-
-        selectedButton = x + y * 2;
-
-        if (lastSelectedButton != selectedButton)
-
-        {
-
-          lastSelectedButton = selectedButton;
-
-          drawButton(lastSelectedButton % 2, (int)(lastSelectedButton / 2));
-
+#include <HardwareSerial.h>
+#include <SPI.h>
+#include <Ethernet.h>
+#include <EthernetUdp.h>
+#include <IPAddress.h>
+#include <EthernetServer.h>
+#include "OneWire.h"
+
+
+const byte default_ip[] = { 10, 20, 191, 200 };
+const byte default_gateway[] = { 10, 20, 191, 169 };
+const byte default_dns1[] = { 185, 108, 192, 4 };
+byte mac_address[] = {0xCA, 0xAF, 0x21, 0x9C, 0x11, 0x29}; //MAC-адрес Arduino
+EthernetClient narodmonClient;
+
+float temp_DS18B20;
+float humidity_DHT22 = 0, temp_DHT22 = 0;
+OneWire dallas18b20(ONEWIRE_PIN);
+
+const unsigned long postingInterval = 330000;  // интервал между отправками данных в миллисекундах (10 минут)
+uint32_t nextConnectionTime = 20000;           // время последней передачи данных
+char replyBuffer[160];
+const char *narodmon_host = "narodmon.ru";
+const int narodmon_port = 8283;
+char numberConversionBuffer[6];
+
+void ftos(float float_number);
+
+void sendNarodmonData();
+
+void narodmonLoop();
+
+
+void narodmonLoop() {
+    if ((millis() > nextConnectionTime)) {
+        char temp[3];
+        //формирование HTTP-запроса
+        memset(replyBuffer, 0, sizeof(replyBuffer));
+        strcpy(replyBuffer, "#");
+
+        //Конвертируем MAC-адрес
+        for (int k = 0; k < 6; k++) {
+            int b1 = mac_address[k] / 16;
+            int b2 = mac_address[k] % 16;
+            char c1[2], c2[2];
+
+            if (b1 > 9) c1[0] = (char) (b1 - 10) + 'A';
+            else c1[0] = (char) (b1) + '0';
+            if (b2 > 9) c2[0] = (char) (b2 - 10) + 'A';
+            else c2[0] = (char) (b2) + '0';
+
+            c1[1] = '\0';
+            c2[1] = '\0';
+
+            strcat(replyBuffer, c1);
+            strcat(replyBuffer, c2);
         }
-
-        else
-
-        {
-
-          activateProc(selectedButton, !procActive[selectedButton]);
-
-        }
-
-        lastSelectedButton = selectedButton;        
-
-      }
-
-      else
-
-      {
-
-        clickAdjButton((int)(myTouch.getY() / 80));
-
-      }
-
+        strcat(replyBuffer, "\n#T1#");
+        ftos(temp_DHT22);
+        strcat(replyBuffer, numberConversionBuffer);
+        strcat(replyBuffer, "\n#H1#");
+        ftos(humidity_DHT22);
+        strcat(replyBuffer, numberConversionBuffer);
+        strcat(replyBuffer, "\n#T2#");
+        ftos(temp_DS18B20);
+        strcat(replyBuffer, numberConversionBuffer);
+        strcat(replyBuffer, "\n#LAT#56.14031\n#LNG#47.19248\n##\0");
+        Serial.print("Prepared replyBuffer:");
+        Serial.println(replyBuffer);
+        sendNarodmonData();
+        //lat=56.14031&lon=47.19248
     }
 
-    tick();
-
-    delay(TICK);
-
-  }
-
-
-
 }
 
-void drawAdjButtons()
+void sendNarodmonData() {
+    if (narodmonClient.connect(narodmon_host, narodmon_port)) {
+        narodmonClient.println(replyBuffer);
+        narodmonClient.stop();
+        nextConnectionTime = millis() + postingInterval;
+        Serial.print(millis());
+        Serial.println("Connection to NarodMon successfull!");
+    } else
+        Serial.println("Can not connect to NarodMon :((");
+}
 
+void ftos(float float_number) //int to string
 {
+    numberConversionBuffer[5] = '\0';
+    int number = float_number * 10;
+    int digits_processed = 0;
+    int char_position = 4;
+    if (number < 0) {
+        number = -number;
+        numberConversionBuffer[0] = '-';
+    } else
+        numberConversionBuffer[0] = '0';
 
-  for(int i=0;i<3;i++)
+    numberConversionBuffer[char_position] = (number % 10) + 48;
+    char_position--;
+    numberConversionBuffer[char_position] = '.';
+    char_position--;
+    while (digits_processed < 2) {
+        number /= 10;
+        numberConversionBuffer[char_position] = (number % 10) + 48;
+        char_position--;
+        digits_processed++;
+    }
+    while (char_position > 0) {
+        numberConversionBuffer[char_position] = '0';
+        char_position--;
+    }
 
-  {
 
-  myGLCD.setColor(VGA_NAVY);
-
-  myGLCD.fillRoundRect (320+dX, 0+dY+i*80,400-dX, 80-dY+i*80);
-
-  myGLCD.setColor(VGA_WHITE);
-
-  myGLCD.print(adjLabel[0][i], 320+dX/2, 0+dY+i*80);
-
-  } 
 
 }
+void show_ds18b20() {
+    byte i;
+    byte present = 0;
+    byte type_s;
+    byte data[12];
+    byte addr[8];
 
 
-void clickAdjButton(int i)
+    if (!dallas18b20.search(addr)) {
+        Serial.println("No more addresses.");
+        Serial.println();
+        dallas18b20.reset_search();
+        delay(250);
+        return;
+    }
 
-{
+    Serial.print("ROM =");
+    for (i = 0; i < 8; i++) {
+        Serial.write(' ');
+        Serial.print(addr[i], HEX);
+    }
 
-  if(selectedButton>=0)
+    if (OneWire::crc8(addr, 7) != addr[7]) {
+        Serial.println("CRC is not valid!");
+        return;
+    }
+    Serial.println();
 
- {
+    // the first ROM byte indicates which chip
+    switch (addr[0]) {
+        case 0x10:
+            Serial.println("  Chip = DS18S20");  // or old DS1820
+            type_s = 1;
+            break;
+        case 0x28:
+            Serial.println("  Chip = DS18B20");
+            type_s = 0;
+            break;
+        case 0x22:
+            Serial.println("  Chip = DS1822");
+            type_s = 0;
+            break;
+        default:
+            Serial.println("Device is not a DS18x20 family device.");
+            return;
+    }
 
-     PROC_DURATION_MS[selectedButton]+=ADJ_DELTA[i];
+    dallas18b20.reset();
+    dallas18b20.select(addr);
+    dallas18b20.write(0x44, 1);        // start conversion, with parasite power on at the end
 
-     duration_changed = true;
+    present = dallas18b20.reset();
+    dallas18b20.select(addr);
+    dallas18b20.write(0xBE);         // Read Scratchpad
 
- } 
+    Serial.print("  Data = ");
+    Serial.print(present, HEX);
+    Serial.print(" ");
+    for (i = 0; i < 9; i++) {           // we need 9 bytes
+        data[i] = dallas18b20.read();
+        Serial.print(data[i], HEX);
+        Serial.print(" ");
+    }
+    Serial.print(" CRC=");
+    Serial.print(OneWire::crc8(data, 8), HEX);
+    Serial.println();
+
+    // Convert the data to actual temperature
+    // because the result is a 16 bit signed integer, it should
+    // be stored to an "int16_t" type, which is always 16 bits
+    // even when compiled on a 32 bit processor.
+    int16_t raw = (data[1] << 8) | data[0];
+    if (type_s) {
+        raw = raw << 3; // 9 bit resolution default
+        if (data[7] == 0x10) {
+            // "count remain" gives full 12 bit resolution
+            raw = (raw & 0xFFF0) + 12 - data[6];
+        }
+    } else {
+        byte cfg = (data[4] & 0x60);
+        // at lower res, the low bits are undefined, so let's zero them
+        if (cfg == 0x00) raw = raw & ~7;  // 9 bit resolution, 93.75 ms
+        else if (cfg == 0x20) raw = raw & ~3; // 10 bit res, 187.5 ms
+        else if (cfg == 0x40) raw = raw & ~1; // 11 bit res, 375 ms
+        //// default is 12 bit resolution, 750 ms conversion time
+    }
+    temp_DS18B20 = (float) raw / 16.0;
+    Serial.print("  Temperature ds18b20= ");
+    Serial.print(temp_DS18B20);
+    Serial.println(" Cels");
 
 }
+void setup() {
+    Serial.begin(115200);
+    delay(10);
+    if(!Ethernet.begin(mac_address)){
+        Serial.println("Can not assign DHCP address!!!!");
+        Ethernet.begin(mac_address,default_ip,default_dns1,default_gateway);
+    }
 
-void setup()
-
-{
-
-  for (int i = 0; i < 6; i++) {
-
-    pinMode(RELAY[i], OUTPUT);
-
-    digitalWrite(RELAY[i], HIGH);
-
-  }
-
-  
-
-  Serial.begin(115200);
-
-  myGLCD.InitLCD(LANDSCAPE);
-
-  myGLCD.clrScr();
-
-  myTouch.InitTouch(1);
-
-  myTouch.setPrecision(PREC_HI);
-
-
-
-  myGLCD.setFont(BigFont);
-
-  myGLCD.setBackColor(0, 0, 255);
-
-  myGLCD.setColor(VGA_BLUE);
-
-
-
-  for (int i = 0; i < 2; i++)
-
-    for (int t = 0; t < 3; t++)
-
-      drawButton(i, t);
-
-  last_tick = millis();  
-
-  drawAdjButtons();
-
+    Serial.print("Local IP is ");
+    delay(2000);
+    Serial.println(Ethernet.localIP());
+    nextConnectionTime = millis() - postingInterval + 15000; //первое соединение через 15 секунд после запуска
 }
 
-
+void loop(){
+    show_ds18b20();
+//    narodmonLoop();
+    delay(15000);
+}
