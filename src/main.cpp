@@ -337,8 +337,8 @@ void loop() {
     ethernet_loop();
     readTemperature();
     delay(5000);
-    Serial.println("DHT11:");
+    Serial.print("DHT11:");
     Serial.print(dht11Temperature);
     Serial.print(" Celsius, Humidity(%):");
-    Serial.print(dht11Humidity);
+    Serial.println(dht11Humidity);
 }
