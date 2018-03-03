@@ -44,7 +44,7 @@ SCK (Serial Clock)  ->  A5 on Uno/Pro-Mini, 21 on Mega2560/Due, 3 Leonardo/Pro-M
 #define SOIL_SENSOR_PIN1 A0
 #define SOIL_SENSOR_PIN2 40
 DHT dht11Sensor(DHT11_PIN, DHT11);
-OneWire ds(DS18B20_CLOCK_PIN);  // on pin 10 (a 4.7K resistor is necessary)
+OneWire ds(DS18B20_STEEL_PIN);  // on pin 10 (a 4.7K resistor is necessary)
 
 byte mac[] = my_personal_mac_address;
 IPAddress ip(192, 168, 3, 177);
@@ -232,22 +232,21 @@ void ds18b20Read(void) {
     // the first ROM byte indicates which chip
     switch (addr[0]) {
         case 0x10:
-            Serial.println("  Chip = DS18S20");  // or old DS1820
+            Serial.print("  Chip = DS18S20");  // or old DS1820
             type_s = 1;
             break;
         case 0x28:
-            Serial.println("  Chip = DS18B20");
+            Serial.print("  Chip = DS18B20");
             type_s = 0;
             break;
         case 0x22:
-            Serial.println("  Chip = DS1822");
+            Serial.print("  Chip = DS1822");
             type_s = 0;
             break;
         default:
-            Serial.println("Device is not a DS18x20 family device.");
+            Serial.print("Device is not a DS18x20 family device.");
             return;
     }
-
     ds.reset();
     ds.select(addr);
     ds.write(0x44, 1);        // start conversion, with parasite power on at the end
@@ -269,7 +268,6 @@ void ds18b20Read(void) {
     }
     Serial.print(" CRC=");
     Serial.print(OneWire::crc8(data, 8), HEX);
-    Serial.println();
 
     // Convert the data to actual temperature
     // because the result is a 16 bit signed integer, it should
@@ -296,21 +294,6 @@ void ds18b20Read(void) {
     Serial.print(" Celsius, ");
 }
 //////////////////////////////////////////////////////////////////
-
-
-const int RELAY[6] = {8, 9, 10, 11, 12, 13};
-
-void setupRelay() {
-
-    for (int i = 0; i < 6; i++) {
-
-        pinMode(RELAY[i], OUTPUT);
-
-        digitalWrite(RELAY[i], HIGH);
-
-    }
-    Serial.begin(115200);
-}
 
 void print2digits(int number) {
     if (number >= 0 && number < 10) {
@@ -354,4 +337,8 @@ void loop() {
     ethernet_loop();
     readTemperature();
     delay(5000);
+    Serial.println("DHT11:");
+    Serial.print(dht11Temperature);
+    Serial.print(" Celsius, Humidity(%):");
+    Serial.print(dht11Humidity);
 }
