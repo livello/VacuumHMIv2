@@ -25,9 +25,10 @@ SCK (Serial Clock)  ->  A5 on Uno/Pro-Mini, 21 on Mega2560/Due, 3 Leonardo/Pro-M
 
 #include <BME280I2C.h>
 #include <Wire.h>
-#include "SPI.h"
 #include <TimeLib.h>
 #include <DS1307RTC.h>
+#include <DHT.h>
+#include <OneWire.h>
 #include "Ethernet.h"
 #include "personal_data.h"
 
@@ -37,17 +38,30 @@ SCK (Serial Clock)  ->  A5 on Uno/Pro-Mini, 21 on Mega2560/Due, 3 Leonardo/Pro-M
 
 #define SERIAL_BAUD 115200
 #define RELAYS_NUM 6
+#define DHT11_PIN 36
+#define DS18B20_CLOCK_PIN 38
+#define DS18B20_STEEL_PIN 34
+#define SOIL_SENSOR_PIN1 A0
+#define SOIL_SENSOR_PIN2 40
+DHT dht11Sensor(DHT11_PIN, DHT11);
+OneWire ds(DS18B20_CLOCK_PIN);  // on pin 10 (a 4.7K resistor is necessary)
+
 byte mac[] = my_personal_mac_address;
 IPAddress ip(192, 168, 3, 177);
 EthernetServer server(80);
 tmElements_t tm;
-const int relayPins[] = {31, 33, 35,37,39,41};
+const int relayPins[] = {31, 33, 35, 37, 39, 41};
 
 BME280I2C bme;    // Default : forced mode, standby time = 1000 ms
 BME280::TempUnit tempUnit(BME280::TempUnit_Celsius);
 BME280::PresUnit presUnit(BME280::PresUnit_Pa);
 // Oversampling = pressure ×1, temperature ×1, humidity ×1, filter off,
-float temp(NAN), hum(NAN), pres(NAN);
+float bme280Temperature(NAN), bme280Humidity(NAN), bme280Pressure(NAN);
+float dht11Temperature(NAN), dht11Humidity(NAN);
+float ds18b20SteelTemperature(NAN), ds18b20ClockTemperature(NAN);
+
+void readTemperature();
+void ds18b20Read(void);
 
 //////////////////////////////////////////////////////////////////
 void ethernet_setup() {
@@ -82,11 +96,11 @@ void setup() {
             Serial.println("Found UNKNOWN sensor! Error!");
     }
     ethernet_setup();
-    for (int i = 0; i < RELAYS_NUM; i++){
+    for (int i = 0; i < RELAYS_NUM; i++) {
         pinMode(relayPins[i], OUTPUT);
-        digitalWrite(relayPins[i],i%2);
+        digitalWrite(relayPins[i], i % 2);
     }
-
+    dht11Sensor.begin();
 }
 
 void ethernet_loop() {
@@ -115,13 +129,13 @@ void ethernet_loop() {
                     client.println("<html>");
                     // output the value of each analog input pin
                     client.println("Temp: ");
-                    client.println(temp);
+                    client.println(bme280Temperature);
                     client.println("°" + String(tempUnit == BME280::TempUnit_Celsius ? 'C' : 'F'));
                     client.println("\t\tHumidity: ");
-                    client.println(hum);
+                    client.println(bme280Humidity);
                     client.println("% RH");
                     client.println("\t\tPressure: ");
-                    client.println(pres);
+                    client.println(bme280Pressure);
                     client.println(" Pa");
                     client.println("<br />");
                     if (RTC.read(tm)) {
@@ -168,27 +182,119 @@ void ethernet_loop() {
 }
 
 //////////////////////////////////////////////////////////////////
-void printBME280Data
-        (
-                Stream *client
-        ) {
-
-
-    bme.read(pres, temp, hum, tempUnit, presUnit);
-
+void printBME280Data(Stream *client) {
+    readTemperature();
     client->print("Temp: ");
-    client->print(temp);
+    client->print(bme280Temperature);
     client->print("°" + String(tempUnit == BME280::TempUnit_Celsius ? 'C' : 'F'));
     client->print("\t\tHumidity: ");
-    client->print(hum);
+    client->print(bme280Humidity);
     client->print("% RH");
     client->print("\t\tPressure: ");
-    client->print(pres);
+    client->print(bme280Pressure);
     client->println(" Pa");
-
     delay(1000);
 }
 
+void readTemperature() {
+    bme.read(bme280Pressure, bme280Temperature, bme280Humidity, tempUnit, presUnit);
+    dht11Temperature = dht11Sensor.readTemperature();
+    dht11Humidity = dht11Sensor.readHumidity();
+    ds18b20Read();
+}
+void ds18b20Read(void) {
+    byte i;
+    byte present = 0;
+    byte type_s;
+    byte data[12];
+    byte addr[8];
+
+
+    if ( !ds.search(addr)) {
+        Serial.println("No more addresses.");
+        Serial.println();
+        ds.reset_search();
+        return;
+    }
+
+    Serial.print("ROM =");
+    for( i = 0; i < 8; i++) {
+        Serial.write(' ');
+        Serial.print(addr[i], HEX);
+    }
+
+    if (OneWire::crc8(addr, 7) != addr[7]) {
+        Serial.println("CRC is not valid!");
+        return;
+    }
+    Serial.println();
+
+    // the first ROM byte indicates which chip
+    switch (addr[0]) {
+        case 0x10:
+            Serial.println("  Chip = DS18S20");  // or old DS1820
+            type_s = 1;
+            break;
+        case 0x28:
+            Serial.println("  Chip = DS18B20");
+            type_s = 0;
+            break;
+        case 0x22:
+            Serial.println("  Chip = DS1822");
+            type_s = 0;
+            break;
+        default:
+            Serial.println("Device is not a DS18x20 family device.");
+            return;
+    }
+
+    ds.reset();
+    ds.select(addr);
+    ds.write(0x44, 1);        // start conversion, with parasite power on at the end
+
+    delay(1000);     // maybe 750ms is enough, maybe not
+    // we might do a ds.depower() here, but the reset will take care of it.
+
+    present = ds.reset();
+    ds.select(addr);
+    ds.write(0xBE);         // Read Scratchpad
+
+    Serial.print("  Data = ");
+    Serial.print(present, HEX);
+    Serial.print(" ");
+    for ( i = 0; i < 9; i++) {           // we need 9 bytes
+        data[i] = ds.read();
+        Serial.print(data[i], HEX);
+        Serial.print(" ");
+    }
+    Serial.print(" CRC=");
+    Serial.print(OneWire::crc8(data, 8), HEX);
+    Serial.println();
+
+    // Convert the data to actual temperature
+    // because the result is a 16 bit signed integer, it should
+    // be stored to an "int16_t" type, which is always 16 bits
+    // even when compiled on a 32 bit processor.
+    int16_t raw = (data[1] << 8) | data[0];
+    if (type_s) {
+        raw = raw << 3; // 9 bit resolution default
+        if (data[7] == 0x10) {
+            // "count remain" gives full 12 bit resolution
+            raw = (raw & 0xFFF0) + 12 - data[6];
+        }
+    } else {
+        byte cfg = (data[4] & 0x60);
+        // at lower res, the low bits are undefined, so let's zero them
+        if (cfg == 0x00) raw = raw & ~7;  // 9 bit resolution, 93.75 ms
+        else if (cfg == 0x20) raw = raw & ~3; // 10 bit res, 187.5 ms
+        else if (cfg == 0x40) raw = raw & ~1; // 11 bit res, 375 ms
+        //// default is 12 bit resolution, 750 ms conversion time
+    }
+    ds18b20ClockTemperature = (float)raw / 16.0;
+    Serial.print("  Temperature = ");
+    Serial.print(ds18b20ClockTemperature);
+    Serial.print(" Celsius, ");
+}
 //////////////////////////////////////////////////////////////////
 
 
@@ -246,5 +352,6 @@ void loop() {
     printBME280Data(&Serial);
     rtc_loop();
     ethernet_loop();
-    delay(500);
+    readTemperature();
+    delay(5000);
 }
