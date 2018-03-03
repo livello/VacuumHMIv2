@@ -36,11 +36,12 @@ SCK (Serial Clock)  ->  A5 on Uno/Pro-Mini, 21 on Mega2560/Due, 3 Leonardo/Pro-M
 #endif
 
 #define SERIAL_BAUD 115200
+#define RELAYS_NUM 6
 byte mac[] = my_personal_mac_address;
 IPAddress ip(192, 168, 3, 177);
 EthernetServer server(80);
 tmElements_t tm;
-
+const int relayPins[] = {31, 33, 35,37,39,41};
 
 BME280I2C bme;    // Default : forced mode, standby time = 1000 ms
 BME280::TempUnit tempUnit(BME280::TempUnit_Celsius);
@@ -81,6 +82,11 @@ void setup() {
             Serial.println("Found UNKNOWN sensor! Error!");
     }
     ethernet_setup();
+    for (int i = 0; i < RELAYS_NUM; i++){
+        pinMode(relayPins[i], OUTPUT);
+        digitalWrite(relayPins[i],i%2);
+    }
+
 }
 
 void ethernet_loop() {
