@@ -174,7 +174,6 @@ void printBME280Data(Stream *client) {
     client->print("\t\tPressure: ");
     client->print(bme280Pressure);
     client->println(" Pa");
-    delay(1000);
 }
 
 void readTemperature() {
@@ -232,7 +231,7 @@ void ds18b20Read(void) {
     ds.select(addr);
     ds.write(0x44, 1);        // start conversion, with parasite power on at the end
 
-    delay(1000);     // maybe 750ms is enough, maybe not
+    chThdSleepMilliseconds(1000);
     // we might do a ds.depower() here, but the reset will take care of it.
 
     present = ds.reset();
@@ -307,9 +306,8 @@ void rtc_loop() {
             Serial.println("DS1307 read error!  Please check the circuitry.");
             Serial.println();
         }
-        delay(9000);
+        chThdSleepMilliseconds(9000);
     }
-    delay(1000);
 }
 
 void loop() {
@@ -317,7 +315,7 @@ void loop() {
     rtc_loop();
     ethernet_loop();
     readTemperature();
-    delay(5000);
+    chThdSleepMilliseconds(10000);
     Serial.print("DHT11:");
     Serial.print(dht11Temperature);
     Serial.print(" Celsius, Humidity(%):");
