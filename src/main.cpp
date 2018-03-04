@@ -332,6 +332,7 @@ static THD_FUNCTION(Thread1, arg) {
         for (int i = 0; i < RELAYS_NUM; i++) {
             digitalWrite(relayPins[i], LOW);
         }
+        Serial.print("/");
     }
 }
 static THD_WORKING_AREA(waThread2, 64);
@@ -352,6 +353,7 @@ static THD_FUNCTION(Thread2, arg) {
 
         // Sleep for 200 milliseconds.
         chThdSleepMilliseconds(200);
+        Serial.print("*");
     }
 }
 //------------------------------------------------------------------------------
