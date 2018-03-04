@@ -1,28 +1,6 @@
 #include "Arduino.h"
 #include "HardwareSerial.h"
-
-/*
-BME280 I2C Test.ino
-
-This code shows how to record data from the BME280 environmental sensor
-using I2C interface. This file is an example file, part of the Arduino
-BME280 library.
-
-GNU General Public License
-
-Written: Dec 30 2015.
-Last Updated: Oct 07 2017.
-
-Connecting the BME280 Sensor:
-Sensor              ->  Board
------------------------------
-Vin (Voltage In)    ->  3.3V
-Gnd (Ground)        ->  Gnd
-SDA (Serial Data)   ->  A4 on Uno/Pro-Mini, 20 on Mega2560/Due, 2 Leonardo/Pro-Micro
-SCK (Serial Clock)  ->  A5 on Uno/Pro-Mini, 21 on Mega2560/Due, 3 Leonardo/Pro-Micro
-
- */
-
+#include "ChRt.h"
 #include <BME280I2C.h>
 #include <Wire.h>
 #include <TimeLib.h>
@@ -31,6 +9,7 @@ SCK (Serial Clock)  ->  A5 on Uno/Pro-Mini, 21 on Mega2560/Due, 3 Leonardo/Pro-M
 #include <OneWire.h>
 #include "Ethernet.h"
 #include "personal_data.h"
+#include "../.piolibdeps/ChRt_ID2986/src/rt/ch.h"
 
 #ifndef PERSONAL_DATA_H
 #define my_personal_mac_address {0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED}
@@ -62,6 +41,7 @@ float ds18b20SteelTemperature(NAN), ds18b20ClockTemperature(NAN);
 
 void readTemperature();
 void ds18b20Read(void);
+void chSetup();
 
 //////////////////////////////////////////////////////////////////
 void ethernet_setup() {
@@ -101,6 +81,7 @@ void setup() {
         digitalWrite(relayPins[i], i % 2);
     }
     dht11Sensor.begin();
+    chBegin(chSetup);
 }
 
 void ethernet_loop() {
@@ -174,7 +155,7 @@ void ethernet_loop() {
             }
         }
         // give the web browser time to receive the data
-        delay(1);
+        chThdSleepMilliseconds(10);
         // close the connection:
         client.stop();
         Serial.println("client disconnected");
@@ -341,4 +322,45 @@ void loop() {
     Serial.print(dht11Temperature);
     Serial.print(" Celsius, Humidity(%):");
     Serial.println(dht11Humidity);
+}
+SEMAPHORE_DECL(sem, 0);
+static THD_WORKING_AREA(waThread1, 64);
+
+static THD_FUNCTION(Thread1, arg) {
+    (void)arg;
+    while (!chThdShouldTerminateX()) {
+        // Wait for signal from thread 2.
+        chSemWait(&sem);
+
+        // Turn LED off.
+        digitalWrite(LED_BUILTIN, LOW);
+    }
+}
+static THD_WORKING_AREA(waThread2, 64);
+
+static THD_FUNCTION(Thread2, arg) {
+    (void)arg;
+    pinMode(LED_BUILTIN, OUTPUT);
+    while (true) {
+        digitalWrite(LED_BUILTIN, HIGH);
+
+        // Sleep for 200 milliseconds.
+        chThdSleepMilliseconds(200);
+
+        // Signal thread 1 to turn LED off.
+        chSemSignal(&sem);
+
+        // Sleep for 200 milliseconds.
+        chThdSleepMilliseconds(200);
+    }
+}
+//------------------------------------------------------------------------------
+// continue setup() after chBegin().
+void chSetup() {
+    // Start threads.
+    chThdCreateStatic(waThread1, sizeof(waThread1),
+                      NORMALPRIO + 2, Thread1, NULL);
+
+    chThdCreateStatic(waThread2, sizeof(waThread2),
+                      NORMALPRIO + 1, Thread2, NULL);
 }
