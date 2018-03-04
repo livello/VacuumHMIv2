@@ -39,10 +39,10 @@ float bme280Temperature(NAN), bme280Humidity(NAN), bme280Pressure(NAN);
 float dht11Temperature(NAN), dht11Humidity(NAN);
 float ds18b20SteelTemperature(NAN), ds18b20ClockTemperature(NAN);
 
-void readTemperature();
 void ds18b20Read(void);
 void chSetup();
-
+void printBME280Data(Stream *client);
+void rtcPrint(Stream *client);
 //////////////////////////////////////////////////////////////////
 void ethernet_setup() {
     Ethernet.begin(mac, 15000);
@@ -109,7 +109,8 @@ void ethernet_loop() {
                     client.println("<!DOCTYPE HTML>");
                     client.println("<html>");
                     // output the value of each analog input pin
-                    client.println("Temp: ");
+
+                    /*    client.println("Temp: ");
                     client.println(bme280Temperature);
                     client.println("°" + String(tempUnit == BME280::TempUnit_Celsius ? 'C' : 'F'));
                     client.println("\t\tHumidity: ");
@@ -117,32 +118,11 @@ void ethernet_loop() {
                     client.println("% RH");
                     client.println("\t\tPressure: ");
                     client.println(bme280Pressure);
-                    client.println(" Pa");
+                    client.println(" Pa");*/
+                    printBME280Data(&client);
                     client.println("<br />");
-                    if (RTC.read(tm)) {
-                        Serial.print("Ok, Time = ");
-                        client.print(tm.Hour);
-                        client.print(':');
-                        client.print(tm.Minute);
-                        client.print(':');
-                        client.print(tm.Second);
-                        client.print(", Date (D/M/Y) = ");
-                        client.print(tm.Day);
-                        client.print('/');
-                        client.print(tm.Month);
-                        client.print('/');
-                        client.print(tmYearToCalendar(tm.Year));
-                        client.println("<br />");
-                    } else {
-                        if (RTC.chipPresent()) {
-                            client.println("The DS1307 is stopped.  Please run the SetTime");
-                            client.println("example to initialize the time and begin running.");
-                        } else {
-                            client.println("DS1307 read error!  Please check the circuitry.");
-                        }
-                        client.println("<br />");
-                    }
-                    client.println("</html>");
+                    rtcPrint(&client);
+                    client.println("<br />\n</html>");
                     break;
                 }
                 if (c == '\n') {
@@ -154,17 +134,13 @@ void ethernet_loop() {
                 }
             }
         }
-        // give the web browser time to receive the data
         chThdSleepMilliseconds(10);
-        // close the connection:
         client.stop();
-        Serial.println("client disconnected");
     }
 }
 
 //////////////////////////////////////////////////////////////////
 void printBME280Data(Stream *client) {
-    readTemperature();
     client->print("Temp: ");
     client->print(bme280Temperature);
     client->print("°" + String(tempUnit == BME280::TempUnit_Celsius ? 'C' : 'F'));
@@ -176,12 +152,6 @@ void printBME280Data(Stream *client) {
     client->println(" Pa");
 }
 
-void readTemperature() {
-    bme.read(bme280Pressure, bme280Temperature, bme280Humidity, tempUnit, presUnit);
-    dht11Temperature = dht11Sensor.readTemperature();
-    dht11Humidity = dht11Sensor.readHumidity();
-    ds18b20Read();
-}
 void ds18b20Read(void) {
     byte i;
     byte present = 0;
@@ -282,29 +252,29 @@ void print2digits(int number) {
     Serial.print(number);
 }
 
-void rtc_loop() {
+void rtcPrint(Stream *client) {
     if (RTC.read(tm)) {
-        Serial.print("Ok, Time = ");
+        client->print("Ok, Time = ");
         print2digits(tm.Hour);
-        Serial.write(':');
+        client->write(':');
         print2digits(tm.Minute);
-        Serial.write(':');
+        client->write(':');
         print2digits(tm.Second);
-        Serial.print(", Date (D/M/Y) = ");
-        Serial.print(tm.Day);
-        Serial.write('/');
-        Serial.print(tm.Month);
-        Serial.write('/');
-        Serial.print(tmYearToCalendar(tm.Year));
-        Serial.println();
+        client->print(", Date (D/M/Y) = ");
+        client->print(tm.Day);
+        client->write('/');
+        client->print(tm.Month);
+        client->write('/');
+        client->print(tmYearToCalendar(tm.Year));
+        client->println();
     } else {
         if (RTC.chipPresent()) {
-            Serial.println("The DS1307 is stopped.  Please run the SetTime");
-            Serial.println("example to initialize the time and begin running.");
-            Serial.println();
+            client->println("The DS1307 is stopped.  Please run the SetTime");
+            client->println("example to initialize the time and begin running.");
+            client->println();
         } else {
-            Serial.println("DS1307 read error!  Please check the circuitry.");
-            Serial.println();
+            client->println("DS1307 read error!  Please check the circuitry.");
+            client->println();
         }
         chThdSleepMilliseconds(9000);
     }
@@ -312,57 +282,42 @@ void rtc_loop() {
 
 void loop() {
     printBME280Data(&Serial);
-    rtc_loop();
-    ethernet_loop();
-    readTemperature();
-    chThdSleepMilliseconds(10000);
+    rtcPrint(&Serial);
     Serial.print("DHT11:");
     Serial.print(dht11Temperature);
     Serial.print(" Celsius, Humidity(%):");
     Serial.println(dht11Humidity);
-}
-SEMAPHORE_DECL(sem, 0);
-static THD_WORKING_AREA(waThread1, 64);
+    chThdSleepMilliseconds(15000);
 
-static THD_FUNCTION(Thread1, arg) {
+}
+static THD_WORKING_AREA(waThreadEthernet, 64);
+
+static THD_FUNCTION(ThreadEthernet, arg) {
     (void)arg;
     while (!chThdShouldTerminateX()) {
-        // Wait for signal from thread 2.
-        chSemWait(&sem);
-        for (int i = 0; i < RELAYS_NUM; i++) {
-            digitalWrite(relayPins[i], LOW);
-        }
-        Serial.print("/");
+        ethernet_loop();
+        chThdSleepMilliseconds(1);
     }
 }
-static THD_WORKING_AREA(waThread2, 64);
+static THD_WORKING_AREA(waThreadServeSensors, 64);
 
-static THD_FUNCTION(Thread2, arg) {
+static THD_FUNCTION(ThreadServeSensors, arg) {
     (void)arg;
-    pinMode(LED_BUILTIN, OUTPUT);
-    while (true) {
-        for (int i = 0; i < RELAYS_NUM; i++) {
-            digitalWrite(relayPins[i], HIGH);
-        }
-
-        // Sleep for 200 milliseconds.
-        chThdSleepMilliseconds(200);
-
-        // Signal thread 1 to turn LED off.
-        chSemSignal(&sem);
-
-        // Sleep for 200 milliseconds.
-        chThdSleepMilliseconds(200);
-        Serial.print("*");
+    while (!chThdShouldTerminateX()) {
+        bme.read(bme280Pressure, bme280Temperature, bme280Humidity, tempUnit, presUnit);
+        dht11Temperature = dht11Sensor.readTemperature();
+        dht11Humidity = dht11Sensor.readHumidity();
+        ds18b20Read();
+        chThdSleepMilliseconds(10000);
     }
 }
 //------------------------------------------------------------------------------
 // continue setup() after chBegin().
 void chSetup() {
     // Start threads.
-    chThdCreateStatic(waThread1, sizeof(waThread1),
-                      NORMALPRIO + 2, Thread1, NULL);
+    chThdCreateStatic(waThreadEthernet, sizeof(waThreadEthernet),
+                      NORMALPRIO + 2, ThreadEthernet, NULL);
 
-    chThdCreateStatic(waThread2, sizeof(waThread2),
-                      NORMALPRIO + 1, Thread2, NULL);
+    chThdCreateStatic(waThreadServeSensors, sizeof(waThreadServeSensors),
+                      NORMALPRIO + 1, ThreadServeSensors, NULL);
 }
