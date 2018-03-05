@@ -42,7 +42,7 @@ float ds18b20SteelTemperature(NAN), ds18b20ClockTemperature(NAN);
 void ds18b20Read(void);
 void chSetup();
 void printBME280Data(Stream *client);
-void rtcPrint(Stream *client);
+//void rtcPrint(Stream *client);
 //////////////////////////////////////////////////////////////////
 void ethernet_setup() {
     Ethernet.begin(mac, 15000);
@@ -121,7 +121,7 @@ void ethernet_loop() {
                     client.println(" Pa");*/
                     printBME280Data(&client);
                     client.println("<br />");
-                    rtcPrint(&client);
+//                    rtcPrint(&client);
                     client.println("<br />\n</html>");
                     break;
                 }
