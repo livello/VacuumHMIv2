@@ -147,7 +147,7 @@ void ethernet_loop() {
 }
 
 //////////////////////////////////////////////////////////////////
-void printBME280Data(Stream *stream = &Serial) {
+void printBME280Data(Stream *stream) {
     readTemperature();
     stream->print("Temp: ");
     stream->print(bme280Temperature);
@@ -164,10 +164,10 @@ void readTemperature() {
     bme.read(bme280Pressure, bme280Temperature, bme280Humidity, tempUnit, presUnit);
     dht11Temperature = dht11Sensor.readTemperature();
     dht11Humidity = dht11Sensor.readHumidity();
-    ds18b20Read();
+    ds18b20Read(&Serial);
 }
 
-void ds18b20Read(Stream *stream = &Serial) {
+void ds18b20Read(Stream *stream) {
     byte i;
     byte present = 0;
     byte type_s;
