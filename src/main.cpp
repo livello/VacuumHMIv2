@@ -306,13 +306,11 @@ void rtcPrint(Stream *stream) {
             stream->println("DS1307 read error!  Please check the circuitry.");
             stream->println();
         }
-        chThdSleepMilliseconds(9000);
     }
 }
 
 void loop() {
     printBME280Data(&Serial);
-    rtcPrint(&Serial);
     readTemperature();
     chThdSleepMilliseconds(10000);
     Serial.print("DHT11:");
@@ -326,12 +324,9 @@ static THD_WORKING_AREA(waThread1, 64);
 static THD_FUNCTION(Thread1, arg) {
     (void)arg;
     while (!chThdShouldTerminateX()) {
-        // Wait for signal from thread 2.
-        chSemWait(&sem);
-        for (int i = 0; i < RELAYS_NUM; i++) {
-            digitalWrite(relayPins[i], LOW);
-        }
-        Serial.print(">");
+//        chSemWait(&sem);
+        rtcPrint(&Serial);
+        chThdSleepMilliseconds(1000);
     }
 }
 static THD_WORKING_AREA(waThread2, 64);
@@ -342,7 +337,6 @@ static THD_FUNCTION(Thread2, arg) {
     while (true) {
         ethernet_loop();
         chThdSleepMilliseconds(100);
-        Serial.print("<");
     }
 }
 //------------------------------------------------------------------------------
