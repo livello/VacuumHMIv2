@@ -252,7 +252,7 @@ void print2digits(int number) {
     Serial.print(number);
 }
 
-void rtcPrint(Stream *client) {
+/*void rtcPrint(Stream *client) {
     if (RTC.read(tm)) {
         client->print("Ok, Time = ");
         print2digits(tm.Hour);
@@ -278,11 +278,11 @@ void rtcPrint(Stream *client) {
         }
         chThdSleepMilliseconds(9000);
     }
-}
+}*/
 
 void loop() {
     printBME280Data(&Serial);
-    rtcPrint(&Serial);
+//    rtcPrint(&Serial);
     Serial.print("DHT11:");
     Serial.print(dht11Temperature);
     Serial.print(" Celsius, Humidity(%):");
