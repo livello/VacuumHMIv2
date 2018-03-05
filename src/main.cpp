@@ -27,6 +27,7 @@
 #define NTP_UDP_PORT 2390
 #define TIME_ZONE 3
 #define seventyYears 2208988800UL
+#define NTP_PACKET_SIZE 48
 
 DHT dht11Sensor(DHT11_PIN, DHT11);
 OneWire ds(DS18B20_CLOCK_PIN);  // on pin 10 (a 4.7K resistor is necessary)
@@ -48,10 +49,8 @@ bool isReadingDS18B20 = false;
 
 
 const char *ntpServerName = "time.nist.gov";
-const int NTP_PACKET_SIZE = 48; // NTP time stamp is in the first 48 bytes of the message
-const byte packetBuffer[NTP_PACKET_SIZE] = {0b11100011,0,6,0xEC,0,0,0,0,0,0,0,0,49,0x4E,49,52,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}; //buffer to hold incoming and outgoing packets
 
-
+byte packetBuffer[NTP_PACKET_SIZE] = {0b11100011,0,6,0xEC,0,0,0,0,0,0,0,0,49,0x4E,49,52,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}; //buffer to hold incoming and outgoing packets
 char packetBuffer2[NTP_PACKET_SIZE];
 IPAddress ntpServerIP; // time.nist.gov NTP server address
 EthernetUDP udp;
