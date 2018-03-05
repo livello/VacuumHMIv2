@@ -40,8 +40,11 @@ float dht11Temperature(NAN), dht11Humidity(NAN);
 float ds18b20SteelTemperature(NAN), ds18b20ClockTemperature(NAN);
 
 void readTemperature();
-void ds18b20Read(void);
+
+void ds18b20Read(Stream *stream);
+
 void chSetup();
+
 void rtcPrint(Stream *stream);
 
 //////////////////////////////////////////////////////////////////
@@ -121,7 +124,7 @@ void ethernet_loop() {
                     client.println(" Pa");
                     client.println("<br />");
                     rtcPrint(&client);
-                        client.println("<br />");
+                    client.println("<br />");
 
                     client.println("</html>");
                     break;
@@ -144,17 +147,17 @@ void ethernet_loop() {
 }
 
 //////////////////////////////////////////////////////////////////
-void printBME280Data(Stream *client) {
+void printBME280Data(Stream *stream = &Serial) {
     readTemperature();
-    client->print("Temp: ");
-    client->print(bme280Temperature);
-    client->print("°" + String(tempUnit == BME280::TempUnit_Celsius ? 'C' : 'F'));
-    client->print("\t\tHumidity: ");
-    client->print(bme280Humidity);
-    client->print("% RH");
-    client->print("\t\tPressure: ");
-    client->print(bme280Pressure);
-    client->println(" Pa");
+    stream->print("Temp: ");
+    stream->print(bme280Temperature);
+    stream->print("°" + String(tempUnit == BME280::TempUnit_Celsius ? 'C' : 'F'));
+    stream->print("\t\tHumidity: ");
+    stream->print(bme280Humidity);
+    stream->print("% RH");
+    stream->print("\t\tPressure: ");
+    stream->print(bme280Pressure);
+    stream->println(" Pa");
 }
 
 void readTemperature() {
@@ -163,7 +166,8 @@ void readTemperature() {
     dht11Humidity = dht11Sensor.readHumidity();
     ds18b20Read();
 }
-void ds18b20Read(void) {
+
+void ds18b20Read(Stream *stream = &Serial) {
     byte i;
     byte present = 0;
     byte type_s;
@@ -171,41 +175,39 @@ void ds18b20Read(void) {
     byte addr[8];
 
 
-    if ( !ds.search(addr)) {
-        Serial.println("No more addresses.");
-        Serial.println();
+    if (!ds.search(addr)) {
+        stream->println("No more addresses.");
         ds.reset_search();
         return;
     }
 
     Serial.print("ROM =");
-    for( i = 0; i < 8; i++) {
-        Serial.write(' ');
-        Serial.print(addr[i], HEX);
+    for (i = 0; i < 8; i++) {
+        stream->write(' ');
+        stream->print(addr[i], HEX);
     }
 
     if (OneWire::crc8(addr, 7) != addr[7]) {
-        Serial.println("CRC is not valid!");
+        stream->println("CRC is not valid!");
         return;
     }
-    Serial.println();
 
     // the first ROM byte indicates which chip
     switch (addr[0]) {
         case 0x10:
-            Serial.print("  Chip = DS18S20");  // or old DS1820
+            stream->print("  Chip = DS18S20");  // or old DS1820
             type_s = 1;
             break;
         case 0x28:
-            Serial.print("  Chip = DS18B20");
+            stream->print("  Chip = DS18B20");
             type_s = 0;
             break;
         case 0x22:
-            Serial.print("  Chip = DS1822");
+            stream->print("  Chip = DS1822");
             type_s = 0;
             break;
         default:
-            Serial.print("Device is not a DS18x20 family device.");
+            stream->print("Device is not a DS18x20 family device.");
             return;
     }
     ds.reset();
@@ -219,16 +221,16 @@ void ds18b20Read(void) {
     ds.select(addr);
     ds.write(0xBE);         // Read Scratchpad
 
-    Serial.print("  Data = ");
-    Serial.print(present, HEX);
-    Serial.print(" ");
-    for ( i = 0; i < 9; i++) {           // we need 9 bytes
+    stream->print("  Data = ");
+    stream->print(present, HEX);
+    stream->print(" ");
+    for (i = 0; i < 9; i++) {           // we need 9 bytes
         data[i] = ds.read();
-        Serial.print(data[i], HEX);
-        Serial.print(" ");
+        stream->print(data[i], HEX);
+        stream->print(" ");
     }
-    Serial.print(" CRC=");
-    Serial.print(OneWire::crc8(data, 8), HEX);
+    stream->print(" CRC=");
+    stream->print(OneWire::crc8(data, 8), HEX);
 
     // Convert the data to actual temperature
     // because the result is a 16 bit signed integer, it should
@@ -249,10 +251,10 @@ void ds18b20Read(void) {
         else if (cfg == 0x40) raw = raw & ~1; // 11 bit res, 375 ms
         //// default is 12 bit resolution, 750 ms conversion time
     }
-    ds18b20ClockTemperature = (float)raw / 16.0;
-    Serial.print("  Temperature = ");
-    Serial.print(ds18b20ClockTemperature);
-    Serial.print(" Celsius, ");
+    ds18b20ClockTemperature = (float) raw / 16.0;
+    stream->print("  DS18b20Temp = ");
+    stream->print(ds18b20ClockTemperature);
+    stream->print(" C, ");
 }
 //////////////////////////////////////////////////////////////////
 
@@ -263,14 +265,14 @@ void print2digits(int number, Stream *stream) {
     stream->print(number);
 }
 
-void rtcPrint(Stream *stream) {
+void rtcPrint(Stream *stream = &Serial) {
     if (RTC.read(tm)) {
         stream->print("Ok, Time = ");
-        print2digits(tm.Hour,stream);
+        print2digits(tm.Hour, stream);
         stream->write(':');
-        print2digits(tm.Minute,stream);
+        print2digits(tm.Minute, stream);
         stream->write(':');
-        print2digits(tm.Second,stream);
+        print2digits(tm.Second, stream);
         stream->print(", Date (D/M/Y) = ");
         stream->print(tm.Day);
         stream->write('/');
@@ -299,27 +301,30 @@ void loop() {
     Serial.print(" Celsius, Humidity(%):");
     Serial.println(dht11Humidity);
 }
+
 SEMAPHORE_DECL(sem, 0);
 static THD_WORKING_AREA(waThread1, 64);
 
 static THD_FUNCTION(Thread1, arg) {
-    (void)arg;
+    (void) arg;
     while (!chThdShouldTerminateX()) {
 //        chSemWait(&sem);
         rtcPrint(&Serial);
         chThdSleepMilliseconds(1000);
     }
 }
+
 static THD_WORKING_AREA(waThread2, 64);
 
 static THD_FUNCTION(Thread2, arg) {
-    (void)arg;
+    (void) arg;
     pinMode(LED_BUILTIN, OUTPUT);
     while (true) {
         ethernet_loop();
         chThdSleepMilliseconds(100);
     }
 }
+
 //------------------------------------------------------------------------------
 // continue setup() after chBegin().
 void chSetup() {
