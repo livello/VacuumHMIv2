@@ -275,36 +275,36 @@ void ds18b20Read(void) {
 }
 //////////////////////////////////////////////////////////////////
 
-void print2digits(int number) {
+void print2digits(int number, Stream *stream) {
     if (number >= 0 && number < 10) {
-        Serial.write('0');
+        stream->write('0');
     }
-    Serial.print(number);
+    stream->print(number);
 }
 
-void rtc_loop() {
+void rtcTest(Stream* stream) {
     if (RTC.read(tm)) {
-        Serial.print("Ok, Time = ");
-        print2digits(tm.Hour);
-        Serial.write(':');
-        print2digits(tm.Minute);
-        Serial.write(':');
-        print2digits(tm.Second);
-        Serial.print(", Date (D/M/Y) = ");
-        Serial.print(tm.Day);
-        Serial.write('/');
-        Serial.print(tm.Month);
-        Serial.write('/');
-        Serial.print(tmYearToCalendar(tm.Year));
-        Serial.println();
+        stream->print("Ok, Time = ");
+        print2digits(tm.Hour,stream);
+        stream->write(':');
+        print2digits(tm.Minute,stream);
+        stream->write(':');
+        print2digits(tm.Second,stream);
+        stream->print(", Date (D/M/Y) = ");
+        stream->print(tm.Day);
+        stream->write('/');
+        stream->print(tm.Month);
+        stream->write('/');
+        stream->print(tmYearToCalendar(tm.Year));
+        stream->println();
     } else {
         if (RTC.chipPresent()) {
-            Serial.println("The DS1307 is stopped.  Please run the SetTime");
-            Serial.println("example to initialize the time and begin running.");
-            Serial.println();
+            stream->println("The DS1307 is stopped.  Please run the SetTime");
+            stream->println("example to initialize the time and begin running.");
+            stream->println();
         } else {
-            Serial.println("DS1307 read error!  Please check the circuitry.");
-            Serial.println();
+            stream->println("DS1307 read error!  Please check the circuitry.");
+            stream->println();
         }
         chThdSleepMilliseconds(9000);
     }
@@ -312,7 +312,7 @@ void rtc_loop() {
 
 void loop() {
     printBME280Data(&Serial);
-    rtc_loop();
+    rtcTest(&Serial);
     ethernet_loop();
     readTemperature();
     chThdSleepMilliseconds(10000);
