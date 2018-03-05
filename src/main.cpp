@@ -388,10 +388,11 @@ void getNtpTime() {
         unsigned long epoch = secsSince1900 - seventyYears + TIME_ZONE * 3600;
         unsigned long time_delta = abs(epoch-time_rtc);
         if(time_delta>5) {
-            RTC.set(epoch);
+            breakTime(epoch, tm_ntp);
+            RTC.write(tm_ntp);
         }
         Serial.print("Time delta seconds:");
-        Serial.print(time_delta);
+        Serial.println(time_delta);
         rtcPrint(&Serial);
     }
 }
