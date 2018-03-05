@@ -49,7 +49,9 @@ bool isReadingDS18B20 = false;
 
 const char *ntpServerName = "time.nist.gov";
 const int NTP_PACKET_SIZE = 48; // NTP time stamp is in the first 48 bytes of the message
-byte packetBuffer[NTP_PACKET_SIZE]; //buffer to hold incoming and outgoing packets
+const byte packetBuffer[NTP_PACKET_SIZE] = {0b11100011,0,6,0xEC,0,0,0,0,0,0,0,0,49,0x4E,49,52,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}; //buffer to hold incoming and outgoing packets
+
+
 char packetBuffer2[NTP_PACKET_SIZE];
 IPAddress ntpServerIP; // time.nist.gov NTP server address
 EthernetUDP udp;
@@ -370,9 +372,10 @@ void getNtpTime() {
     sendNTPpacket(ntpServerIP); // send an NTP packet to a time server
     // wait to see if a reply is available
     time_t time_rtc = RTC.get();
-    uint32_t send_time = millis();
-    while (send_time + 1500 > millis() && !udp.parsePacket())
-        chThdSleep(10);
+//    unsigned long send_time = millis();
+//    while (send_time + 2500 > millis() && !udp.parsePacket())
+//        chThdSleep(100);
+    chThdSleep(1000);
     if (!udp.parsePacket()) {
         Serial.println("no answer was received");
         return;
@@ -395,18 +398,18 @@ void getNtpTime() {
 void sendNTPpacket(IPAddress &address) {
     Serial.println("sending NTP packet...");
     // set all bytes in the buffer to 0
-    memset(packetBuffer, 0, NTP_PACKET_SIZE);
-    // Initialize values needed to form NTP request
-    // (see URL above for details on the packets)
-    packetBuffer[0] = 0b11100011;   // LI, Version, Mode
-    packetBuffer[1] = 0;     // Stratum, or type of clock
-    packetBuffer[2] = 6;     // Polling Interval
-    packetBuffer[3] = 0xEC;  // Peer Clock Precision
-    // 8 bytes of zero for Root Delay & Root Dispersion
-    packetBuffer[12] = 49;
-    packetBuffer[13] = 0x4E;
-    packetBuffer[14] = 49;
-    packetBuffer[15] = 52;
+//    memset(packetBuffer, 0, NTP_PACKET_SIZE);
+//    // Initialize values needed to form NTP request
+//    // (see URL above for details on the packets)
+//    packetBuffer[0] = 0b11100011;   // LI, Version, Mode
+//    packetBuffer[1] = 0;     // Stratum, or type of clock
+//    packetBuffer[2] = 6;     // Polling Interval
+//    packetBuffer[3] = 0xEC;  // Peer Clock Precision
+//    // 8 bytes of zero for Root Delay & Root Dispersion
+//    packetBuffer[12] = 49;
+//    packetBuffer[13] = 0x4E;
+//    packetBuffer[14] = 49;
+//    packetBuffer[15] = 52;
 
     // all NTP fields have been given values, now
     // you can send a packet requesting a timestamp:
