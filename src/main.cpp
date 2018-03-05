@@ -38,6 +38,7 @@ BME280::PresUnit presUnit(BME280::PresUnit_Pa);
 float bme280Temperature(NAN), bme280Humidity(NAN), bme280Pressure(NAN);
 float dht11Temperature(NAN), dht11Humidity(NAN);
 float ds18b20SteelTemperature(NAN), ds18b20ClockTemperature(NAN);
+bool isReadingDS18B20 = false;
 
 void readTemperature();
 
@@ -161,6 +162,9 @@ void readTemperature() {
 }
 
 void ds18b20Read(Stream *stream) {
+    if(isReadingDS18B20)
+        return;
+    isReadingDS18B20 = true;
     byte i;
     byte present = 0;
     byte type_s;
@@ -246,6 +250,7 @@ void ds18b20Read(Stream *stream) {
     }
     stream->println("No more addresses.");
     ds.reset_search();
+    isReadingDS18B20 = false;
 }
 //////////////////////////////////////////////////////////////////
 
