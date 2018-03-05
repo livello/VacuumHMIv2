@@ -23,7 +23,7 @@
 #define SOIL_SENSOR_PIN1 A0
 #define SOIL_SENSOR_PIN2 40
 DHT dht11Sensor(DHT11_PIN, DHT11);
-OneWire ds(DS18B20_STEEL_PIN);  // on pin 10 (a 4.7K resistor is necessary)
+OneWire ds(DS18B20_CLOCK_PIN);  // on pin 10 (a 4.7K resistor is necessary)
 
 byte mac[] = my_personal_mac_address;
 IPAddress ip(192, 168, 3, 177);
@@ -42,6 +42,7 @@ float ds18b20SteelTemperature(NAN), ds18b20ClockTemperature(NAN);
 void readTemperature();
 void ds18b20Read(void);
 void chSetup();
+void rtcPrint(Stream *stream);
 
 //////////////////////////////////////////////////////////////////
 void ethernet_setup() {
@@ -78,7 +79,7 @@ void setup() {
     ethernet_setup();
     for (int i = 0; i < RELAYS_NUM; i++) {
         pinMode(relayPins[i], OUTPUT);
-        digitalWrite(relayPins[i], i % 2);
+        digitalWrite(relayPins[i], LOW);
     }
     dht11Sensor.begin();
     chBegin(chSetup);
@@ -119,29 +120,9 @@ void ethernet_loop() {
                     client.println(bme280Pressure);
                     client.println(" Pa");
                     client.println("<br />");
-                    if (RTC.read(tm)) {
-                        Serial.print("Ok, Time = ");
-                        client.print(tm.Hour);
-                        client.print(':');
-                        client.print(tm.Minute);
-                        client.print(':');
-                        client.print(tm.Second);
-                        client.print(", Date (D/M/Y) = ");
-                        client.print(tm.Day);
-                        client.print('/');
-                        client.print(tm.Month);
-                        client.print('/');
-                        client.print(tmYearToCalendar(tm.Year));
+                    rtcPrint(&client);
                         client.println("<br />");
-                    } else {
-                        if (RTC.chipPresent()) {
-                            client.println("The DS1307 is stopped.  Please run the SetTime");
-                            client.println("example to initialize the time and begin running.");
-                        } else {
-                            client.println("DS1307 read error!  Please check the circuitry.");
-                        }
-                        client.println("<br />");
-                    }
+
                     client.println("</html>");
                     break;
                 }
