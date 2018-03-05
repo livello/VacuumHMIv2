@@ -387,6 +387,7 @@ void getNtpTime() {
         Serial.print(time_rtc);
         Serial.print("NTP seconds:");
         Serial.println(epoch);
+        rtcPrint(&Serial);
     }
 }
 
