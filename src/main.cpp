@@ -15,7 +15,7 @@
 #define my_personal_mac_address {0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED}
 #endif
 
-#define SERIAL_BAUD 115200
+#define SERIAL_BAUD 230400
 #define RELAYS_NUM 6
 #define DHT11_PIN 36
 #define DS18B20_CLOCK_PIN 38
@@ -46,6 +46,8 @@ void ds18b20Read(Stream *stream);
 void chSetup();
 
 void rtcPrint(Stream *stream);
+
+void printBME280Data(Stream *stream);
 
 //////////////////////////////////////////////////////////////////
 void ethernet_setup() {
@@ -108,24 +110,16 @@ void ethernet_loop() {
                     client.println("Content-Type: text/html");
                     client.println(
                             "Connection: close");  // the connection will be closed after completion of the response
-                    client.println("Refresh: 5");  // refresh the page automatically every 5 sec
+                    client.println("Refresh: 25");  // refresh the page automatically every 5 sec
                     client.println();
                     client.println("<!DOCTYPE HTML>");
                     client.println("<html>");
                     // output the value of each analog input pin
-                    client.println("Temp: ");
-                    client.println(bme280Temperature);
-                    client.println("°" + String(tempUnit == BME280::TempUnit_Celsius ? 'C' : 'F'));
-                    client.println("\t\tHumidity: ");
-                    client.println(bme280Humidity);
-                    client.println("% RH");
-                    client.println("\t\tPressure: ");
-                    client.println(bme280Pressure);
-                    client.println(" Pa");
-                    client.println("<br />");
                     rtcPrint(&client);
                     client.println("<br />");
-
+                    printBME280Data(&client);
+                    client.println("<br />");
+                    ds18b20Read(&client);
                     client.println("</html>");
                     break;
                 }
@@ -148,7 +142,6 @@ void ethernet_loop() {
 
 //////////////////////////////////////////////////////////////////
 void printBME280Data(Stream *stream) {
-    readTemperature();
     stream->print("Temp: ");
     stream->print(bme280Temperature);
     stream->print("°" + String(tempUnit == BME280::TempUnit_Celsius ? 'C' : 'F'));
