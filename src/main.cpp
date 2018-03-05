@@ -324,7 +324,7 @@ static THD_FUNCTION(Thread1, arg) {
     (void) arg;
     while (!chThdShouldTerminateX()) {
 //        chSemWait(&sem);
-        rtcPrint(&Serial);
+//        rtcPrint(&Serial);
         chThdSleepMilliseconds(1000);
     }
 }
@@ -353,7 +353,7 @@ void chSetup() {
 
 void getNtpTime() {
     my_dns.begin(Ethernet.dnsServerIP());
-    int ret = my_dns.getHostByName("MyComputerName", timeServerIP);
+    int ret = my_dns.getHostByName(ntpServerName, timeServerIP);
     if (ret == 1) {
         Serial.print("IP: ");
         Serial.print(timeServerIP);
@@ -361,6 +361,7 @@ void getNtpTime() {
         Serial.print("getHostByName Failed");
         Serial.print("ret = ");
         Serial.print(ret);
+        return;
     }
     //get a random server from the pool
     sendNTPpacket(timeServerIP); // send an NTP packet to a time server
