@@ -370,10 +370,12 @@ void getNtpTime() {
     sendNTPpacket(ntpServerIP); // send an NTP packet to a time server
     // wait to see if a reply is available
     time_t time_rtc = RTC.get();
-    chThdSleep(1000);
-    int cb = udp.parsePacket();
-    if (!cb) {
-        Serial.println("no packet yet");
+    uint32_t send_time = millis();
+    while (send_time + 1500 > millis() && !udp.parsePacket())
+        chThdSleep(10);
+    if (!udp.parsePacket()) {
+        Serial.println("no answer was received");
+        return;
     } else {
         udp.read(packetBuffer2, NTP_PACKET_SIZE); // read the packet into the buffer
         unsigned long highWord = word(packetBuffer2[40], packetBuffer2[41]);
