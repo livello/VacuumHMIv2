@@ -181,7 +181,7 @@ void readTemperature() {
     bme.read(bme280Pressure, bme280Temperature, bme280Humidity, tempUnit, presUnit);
     dht11Temperature = dht11Sensor.readTemperature();
     dht11Humidity = dht11Sensor.readHumidity();
-    ds18b20Read(&Serial);
+//    ds18b20Read(&Serial);
 }
 
 void ds18b20Read(Stream *stream) {
@@ -385,11 +385,12 @@ void getNtpTime() {
         unsigned long lowWord = word(packetBuffer2[42], packetBuffer2[43]);
         unsigned long secsSince1900 = highWord << 16 | lowWord;
         unsigned long epoch = secsSince1900 - seventyYears + TIME_ZONE * 3600;
-        RTC.set(epoch);
-        Serial.print("RTC seconds:");
-        Serial.print(time_rtc);
-        Serial.print("NTP seconds:");
-        Serial.println(epoch);
+        unsigned long time_delta = abs(epoch-time_rtc);
+        if(time_delta>5) {
+            RTC.set(epoch);
+        }
+        Serial.print("Time delta seconds:");
+        Serial.print(time_delta);
         rtcPrint(&Serial);
     }
 }
