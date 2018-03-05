@@ -312,8 +312,8 @@ void rtcPrint(Stream *stream = &Serial) {
 
 void loop() {
 //    getNtpTime();
-    readTemperature();
-    printBME280Data(&Serial);
+//    readTemperature();
+//    printBME280Data(&Serial);
     Serial.print("DHT11:");
     Serial.print(dht11Temperature);
     Serial.print(" Celsius, Humidity(%):");
