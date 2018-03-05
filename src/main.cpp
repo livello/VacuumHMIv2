@@ -31,7 +31,7 @@ OneWire ds(DS18B20_CLOCK_PIN);  // on pin 10 (a 4.7K resistor is necessary)
 byte mac[] = my_personal_mac_address;
 IPAddress ip(192, 168, 3, 177);
 EthernetServer server(80);
-tmElements_t tm;
+tmElements_t tm_rtc;
 const int relayPins[] = {31, 33, 35, 37, 39, 41};
 
 BME280I2C bme;    // Default : forced mode, standby time = 1000 ms
@@ -71,6 +71,7 @@ void ethernet_setup() {
     Ethernet.begin(mac, 15000);
     server.begin();
     udp.begin(NTP_UDP_PORT);
+    my_dns.begin(Ethernet.dnsServerIP());
     Serial.print("server is at ");
     Serial.println(Ethernet.localIP());
 }
@@ -279,19 +280,19 @@ void print2digits(int number, Stream *stream) {
 }
 
 void rtcPrint(Stream *stream = &Serial) {
-    if (RTC.read(tm)) {
+    if (RTC.read(tm_rtc)) {
         stream->print("Ok, Time = ");
-        print2digits(tm.Hour, stream);
+        print2digits(tm_rtc.Hour, stream);
         stream->write(':');
-        print2digits(tm.Minute, stream);
+        print2digits(tm_rtc.Minute, stream);
         stream->write(':');
-        print2digits(tm.Second, stream);
+        print2digits(tm_rtc.Second, stream);
         stream->print(", Date (D/M/Y) = ");
-        stream->print(tm.Day);
+        stream->print(tm_rtc.Day);
         stream->write('/');
-        stream->print(tm.Month);
+        stream->print(tm_rtc.Month);
         stream->write('/');
-        stream->print(tmYearToCalendar(tm.Year));
+        stream->print(tmYearToCalendar(tm_rtc.Year));
         stream->println();
     } else {
         if (RTC.chipPresent()) {
@@ -333,7 +334,6 @@ static THD_WORKING_AREA(waThread2, 64);
 
 static THD_FUNCTION(Thread2, arg) {
     (void) arg;
-    pinMode(LED_BUILTIN, OUTPUT);
     while (true) {
         ethernet_loop();
         chThdSleepMilliseconds(100);
@@ -352,7 +352,6 @@ void chSetup() {
 }
 
 void getNtpTime() {
-    my_dns.begin(Ethernet.dnsServerIP());
     int ret = my_dns.getHostByName(ntpServerName, timeServerIP);
     if (ret == 1) {
         Serial.print("IP: ");
