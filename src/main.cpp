@@ -282,7 +282,7 @@ void print2digits(int number, Stream *stream) {
     stream->print(number);
 }
 
-void rtcTest(Stream* stream) {
+void rtcPrint(Stream *stream) {
     if (RTC.read(tm)) {
         stream->print("Ok, Time = ");
         print2digits(tm.Hour,stream);
@@ -312,8 +312,7 @@ void rtcTest(Stream* stream) {
 
 void loop() {
     printBME280Data(&Serial);
-    rtcTest(&Serial);
-    ethernet_loop();
+    rtcPrint(&Serial);
     readTemperature();
     chThdSleepMilliseconds(10000);
     Serial.print("DHT11:");
@@ -341,18 +340,8 @@ static THD_FUNCTION(Thread2, arg) {
     (void)arg;
     pinMode(LED_BUILTIN, OUTPUT);
     while (true) {
-        for (int i = 0; i < RELAYS_NUM; i++) {
-            digitalWrite(relayPins[i], HIGH);
-        }
-
-        // Sleep for 200 milliseconds.
-        chThdSleepMilliseconds(200);
-
-        // Signal thread 1 to turn LED off.
-        chSemSignal(&sem);
-
-        // Sleep for 200 milliseconds.
-        chThdSleepMilliseconds(200);
+        ethernet_loop();
+        chThdSleepMilliseconds(100);
         Serial.print("<");
     }
 }
