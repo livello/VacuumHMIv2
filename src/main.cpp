@@ -313,8 +313,8 @@ void rtcPrint(Stream *stream = &Serial) {
 
 void loop() {
     getNtpTime();
-    printBME280Data(&Serial);
     readTemperature();
+    printBME280Data(&Serial);
     Serial.print("DHT11:");
     Serial.print(dht11Temperature);
     Serial.print(" Celsius, Humidity(%):");
@@ -368,13 +368,7 @@ void getNtpTime() {
         Serial.print(ret);
         return;
     }
-    //get a random server from the pool
     sendNTPpacket(ntpServerIP); // send an NTP packet to a time server
-    // wait to see if a reply is available
-    time_t time_rtc = RTC.get();
-//    unsigned long send_time = millis();
-//    while (send_time + 2500 > millis() && !udp.parsePacket())
-//        chThdSleep(100);
     chThdSleep(1000);
     if (!udp.parsePacket()) {
         Serial.println("no answer was received");
@@ -386,13 +380,12 @@ void getNtpTime() {
         unsigned long lowWord = word(packetBuffer2[42], packetBuffer2[43]);
         unsigned long secsSince1900 = highWord << 16 | lowWord;
         unsigned long epoch = secsSince1900 - seventyYears + TIME_ZONE * 3600;
-        unsigned long time_delta = abs(epoch-time_rtc);
-        if(time_delta>5) {
+        if(epoch>RTC.get()+5||epoch+5<RTC.get()) {
             breakTime(epoch, tm_ntp);
             RTC.write(tm_ntp);
+            Serial.print("Time adjusted!!!");
         }
-        Serial.print("Time delta seconds:");
-        Serial.println(time_delta);
+
         rtcPrint(&Serial);
     }
 }
