@@ -123,7 +123,7 @@ void ethernet_loop() {
         while (client.connected()) {
             if (client.available()) {
                 char c = client.read();
-                Serial.write(c);
+//                Serial.write(c);
                 // if you've gotten to the end of the line (received a newline
                 // character) and the line is blank, the http request has ended,
                 // so you can send a reply
@@ -140,9 +140,9 @@ void ethernet_loop() {
                     // output the value of each analog input pin
                     rtcPrint(&client);
                     client.println("<br />");
-                    printBME280Data(&client);
+//                    printBME280Data(&client);
                     client.println("<br />");
-                    ds18b20Read(&client);
+//                    ds18b20Read(&client);
                     client.println("</html>");
                     break;
                 }
@@ -283,7 +283,7 @@ void print2digits(int number, Stream *stream) {
     stream->print(number);
 }
 
-void rtcPrint(Stream *stream = &Serial) {
+void rtcPrint(Stream *stream) {
     if (RTC.read(tm_rtc)) {
         stream->print("Ok, Time = ");
         print2digits(tm_rtc.Hour, stream);
@@ -318,6 +318,7 @@ void loop() {
     Serial.print(dht11Temperature);
     Serial.print(" Celsius, Humidity(%):");
     Serial.println(dht11Humidity);
+    rtcPrint(&Serial);
     chThdSleepMilliseconds(10000);
 
 }
