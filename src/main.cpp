@@ -317,15 +317,7 @@ void rtcPrint(Stream *stream) {
 }
 
 void loop() {
-    getNtpTime();
-    readTemperature();
-    printBME280Data(&Serial);
-    Serial.print("DHT11:");
-    Serial.print(dht11Temperature);
-    Serial.print(" Celsius, Humidity(%):");
-    Serial.println(dht11Humidity);
-    rtcPrint(&Serial);
-    chThdSleepMilliseconds(10000);
+
 
 }
 
@@ -335,9 +327,15 @@ static THD_WORKING_AREA(waThread1, 64);
 static THD_FUNCTION(Thread1, arg) {
     (void) arg;
     while (!chThdShouldTerminateX()) {
-//        chSemWait(&sem);
-//        rtcPrint(&Serial);
-        chThdSleepMilliseconds(1000);
+        getNtpTime();
+        readTemperature();
+        printBME280Data(&Serial);
+        Serial.print("DHT11:");
+        Serial.print(dht11Temperature);
+        Serial.print(" Celsius, Humidity(%):");
+        Serial.println(dht11Humidity);
+        rtcPrint(&Serial);
+        chThdSleepMilliseconds(10000);
     }
 }
 
