@@ -313,18 +313,19 @@ void rtcPrint(Stream *stream) {
 }
 
 void receiveUdpNtpPacket() {
-    if (udp.parsePacket())
+    if (udp.parsePacket()) {
         Serial.println("received UDP packet");
-    udp.read(packetBuffer2, NTP_PACKET_SIZE); // read the packet into the buffer
-    unsigned long highWord = word(packetBuffer2[40], packetBuffer2[41]);
-    unsigned long lowWord = word(packetBuffer2[42], packetBuffer2[43]);
-    unsigned long secsSince1900 = highWord << 16 | lowWord;
-    unsigned long epoch = secsSince1900 - seventyYears + TIME_ZONE * 3600;
-    if (epoch > RTC.get() + 5 || epoch + 5 < RTC.get()) {
-        tmElements_t tm_ntp;
-        breakTime(epoch, tm_ntp);
-        RTC.write(tm_ntp);
-        Serial.print("Time adjusted!!!");
+        udp.read(packetBuffer2, NTP_PACKET_SIZE); // read the packet into the buffer
+        unsigned long highWord = word(packetBuffer2[40], packetBuffer2[41]);
+        unsigned long lowWord = word(packetBuffer2[42], packetBuffer2[43]);
+        unsigned long secsSince1900 = highWord << 16 | lowWord;
+        unsigned long epoch = secsSince1900 - seventyYears + TIME_ZONE * 3600;
+        if (epoch > RTC.get() + 5 || epoch + 5 < RTC.get()) {
+            tmElements_t tm_ntp;
+            breakTime(epoch, tm_ntp);
+            RTC.write(tm_ntp);
+            Serial.print("Time adjusted!!!");
+        }
     }
 }
 
