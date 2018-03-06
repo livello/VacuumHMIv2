@@ -198,8 +198,6 @@ void ds18b20Read(Stream *stream) {
     byte data[12];
     byte addr[8];
     while (ds.search(addr)) {
-
-
         stream->print("ROM =");
         for (i = 0; i < 8; i++) {
             stream->write(' ');
@@ -239,16 +237,16 @@ void ds18b20Read(Stream *stream) {
         ds.select(addr);
         ds.write(0xBE);         // Read Scratchpad
 
-        stream->print("  Data = ");
-        stream->print(present, HEX);
-        stream->print(" ");
+//        stream->print("  Data = ");
+//        stream->print(present, HEX);
+//        stream->print(" ");
         for (i = 0; i < 9; i++) {           // we need 9 bytes
             data[i] = ds.read();
-            stream->print(data[i], HEX);
-            stream->print(" ");
+//            stream->print(data[i], HEX);
+//            stream->print(" ");
         }
-        stream->print(" CRC=");
-        stream->print(OneWire::crc8(data, 8), HEX);
+//        stream->print(" CRC=");
+//        stream->print(OneWire::crc8(data, 8), HEX);
 
         // Convert the data to actual temperature
         // because the result is a 16 bit signed integer, it should
@@ -270,9 +268,9 @@ void ds18b20Read(Stream *stream) {
             //// default is 12 bit resolution, 750 ms conversion time
         }
         ds18b20ClockTemperature = (float) raw / 16.0;
-        stream->print("  DS18b20Temp = ");
+        stream->print("  T: ");
         stream->print(ds18b20ClockTemperature);
-        stream->print(" C, \n");
+        stream->print(" C, \n<br />\n");
     }
     stream->println("No more addresses.");
     ds.reset_search();
