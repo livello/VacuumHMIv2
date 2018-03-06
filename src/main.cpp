@@ -35,7 +35,7 @@ OneWire ds(DS18B20_CLOCK_PIN);  // on pin 10 (a 4.7K resistor is necessary)
 byte mac[] = my_personal_mac_address;
 IPAddress ip(192, 168, 3, 177);
 EthernetServer server(80);
-tmElements_t tm_rtc, tm_ntp;
+tmElements_t tm_rtc;
 const int relayPins[] = {31, 33, 35, 37, 39, 41};
 
 BME280I2C bme;    // Default : forced mode, standby time = 1000 ms
@@ -45,12 +45,13 @@ BME280::PresUnit presUnit(BME280::PresUnit_Pa);
 float bme280Temperature(NAN), bme280Humidity(NAN), bme280Pressure(NAN);
 float dht11Temperature(NAN), dht11Humidity(NAN);
 float ds18b20SteelTemperature(NAN), ds18b20ClockTemperature(NAN);
-bool isReadingDS18B20 = false;
 
 
 const char *ntpServerName = "time.nist.gov";
 
-byte packetBuffer[NTP_PACKET_SIZE] = {0b11100011,0,6,0xEC,0,0,0,0,0,0,0,0,49,0x4E,49,52,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}; //buffer to hold incoming and outgoing packets
+byte packetBuffer[NTP_PACKET_SIZE] = {0b11100011, 0, 6, 0xEC, 0, 0, 0, 0, 0, 0, 0, 0, 49, 0x4E, 49, 52, 0, 0, 0, 0, 0,
+                                      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                                      0}; //buffer to hold incoming and outgoing packets
 char packetBuffer2[NTP_PACKET_SIZE];
 IPAddress ntpServerIP; // time.nist.gov NTP server address
 EthernetUDP udp;
@@ -180,8 +181,10 @@ void readTemperature() {
     bme.read(bme280Pressure, bme280Temperature, bme280Humidity, tempUnit, presUnit);
     dht11Temperature = dht11Sensor.readTemperature();
     dht11Humidity = dht11Sensor.readHumidity();
-//    ds18b20Read(&Serial);
+    ds18b20Read(&Serial);
 }
+
+bool isReadingDS18B20 = false;
 
 void ds18b20Read(Stream *stream) {
     if (isReadingDS18B20)
@@ -274,24 +277,27 @@ void ds18b20Read(Stream *stream) {
     ds.reset_search();
     isReadingDS18B20 = false;
 }
-//////////////////////////////////////////////////////////////////
 
 
 
 
 bool isRTC_using = false;
+
 void rtcPrint(Stream *stream) {
-    if(isRTC_using)
+    if (isRTC_using)
         return;
     isRTC_using = true;
     tmElements_t tm_rtc_current;
     if (RTC.read(tm_rtc_current)) {
         stream->print("Ok, Time = ");
-        (tm_rtc_current.Hour>= 0 && tm_rtc_current.Hour< 10)?stream->write('0'):stream->print(tm_rtc_current.Hour);
+        (tm_rtc_current.Hour >= 0 && tm_rtc_current.Hour < 10) ? stream->write('0') : stream->write('');
+        stream->print(tm_rtc_current.Hour);
         stream->write(':');
-        (tm_rtc_current.Minute>= 0 && tm_rtc_current.Minute< 10)?stream->write('0'):stream->print(tm_rtc_current.Minute);
+        (tm_rtc_current.Minute >= 0 && tm_rtc_current.Minute < 10) ? stream->write('0') : stream->write('');
+        stream->print(tm_rtc_current.Minute);
         stream->write(':');
-        (tm_rtc_current.Second>= 0 && tm_rtc_current.Second< 10)?stream->write('0'):stream->print(tm_rtc_current.Second);
+        (tm_rtc_current.Second >= 0 && tm_rtc_current.Second < 10) ? stream->write('0') : stream->write('');
+        stream->print(tm_rtc_current.Second);
         stream->print(", Date (D/M/Y) = ");
         stream->print(tm_rtc_current.Day);
         stream->write('/');
@@ -313,9 +319,9 @@ void rtcPrint(Stream *stream) {
 }
 
 void loop() {
-//    getNtpTime();
-//    readTemperature();
-//    printBME280Data(&Serial);
+    getNtpTime();
+    readTemperature();
+    printBME280Data(&Serial);
     Serial.print("DHT11:");
     Serial.print(dht11Temperature);
     Serial.print(" Celsius, Humidity(%):");
@@ -358,8 +364,11 @@ void chSetup() {
                       NORMALPRIO + 1, Thread2, NULL);
 }
 
+bool isNtpTimeUsing = false;
 void getNtpTime() {
-
+    if(isNtpTimeUsing)
+        return;
+    isNtpTimeUsing = true;
     int ret = my_dns.getHostByName(ntpServerName, ntpServerIP);
     if (ret == 1) {
         Serial.print("IP: ");
@@ -368,6 +377,7 @@ void getNtpTime() {
         Serial.print("getHostByName Failed");
         Serial.print("ret = ");
         Serial.print(ret);
+        isNtpTimeUsing = false;
         return;
     }
     sendNTPpacket(ntpServerIP); // send an NTP packet to a time server
@@ -382,7 +392,8 @@ void getNtpTime() {
         unsigned long lowWord = word(packetBuffer2[42], packetBuffer2[43]);
         unsigned long secsSince1900 = highWord << 16 | lowWord;
         unsigned long epoch = secsSince1900 - seventyYears + TIME_ZONE * 3600;
-        if(epoch>RTC.get()+5||epoch+5<RTC.get()) {
+        if (epoch > RTC.get() + 5 || epoch + 5 < RTC.get()) {
+            tmElements_t tm_ntp;
             breakTime(epoch, tm_ntp);
             RTC.write(tm_ntp);
             Serial.print("Time adjusted!!!");
@@ -390,6 +401,7 @@ void getNtpTime() {
 
         rtcPrint(&Serial);
     }
+    isNtpTimeUsing = false;
 }
 
 // send an NTP request to the time server at the given address
