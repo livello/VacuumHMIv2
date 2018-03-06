@@ -1,6 +1,5 @@
 #include "Arduino.h"
 #include "HardwareSerial.h"
-#include "ChRt.h"
 #include <BME280I2C.h>
 #include <Wire.h>
 #include <TimeLib.h>
@@ -11,7 +10,6 @@
 #include <Time.h>
 #include "Ethernet.h"
 #include "personal_data.h"
-#include "../.piolibdeps/ChRt_ID2986/src/rt/ch.h"
 
 #ifndef PERSONAL_DATA_H
 #define my_personal_mac_address {0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xED}
@@ -29,6 +27,8 @@
 #define seventyYears 2208988800UL
 #define NTP_PACKET_SIZE 48
 
+#define NTP_SYNC_PERIOD 60000
+#define TEMP_UPDATE_PERIOD 30000
 DHT dht11Sensor(DHT11_PIN, DHT11);
 OneWire ds(DS18B20_CLOCK_PIN);  // on pin 10 (a 4.7K resistor is necessary)
 
@@ -82,8 +82,6 @@ void ethernet_setup() {
 }
 
 void setup() {
-    Serial.println("DS1307RTC Read Test");
-    Serial.println("-------------------");
     Serial.begin(SERIAL_BAUD);
 
     while (!Serial) {} // Wait
@@ -111,7 +109,6 @@ void setup() {
         digitalWrite(relayPins[i], LOW);
     }
     dht11Sensor.begin();
-    chBegin(chSetup);
 }
 
 void ethernet_loop() {
@@ -230,8 +227,7 @@ void ds18b20Read(Stream *stream) {
         ds.reset();
         ds.select(addr);
         ds.write(0x44, 1);        // start conversion, with parasite power on at the end
-
-        chThdSleepMilliseconds(1000);
+//        delay(800);
         // we might do a ds.depower() here, but the reset will take care of it.
 
         present = ds.reset();
@@ -316,49 +312,48 @@ void rtcPrint(Stream *stream) {
     isRTC_using = false;
 }
 
-void loop() {
-
-
+void receiveUdpNtpPacket() {
+    if (udp.parsePacket())
+        Serial.println("received UDP packet");
+    udp.read(packetBuffer2, NTP_PACKET_SIZE); // read the packet into the buffer
+    unsigned long highWord = word(packetBuffer2[40], packetBuffer2[41]);
+    unsigned long lowWord = word(packetBuffer2[42], packetBuffer2[43]);
+    unsigned long secsSince1900 = highWord << 16 | lowWord;
+    unsigned long epoch = secsSince1900 - seventyYears + TIME_ZONE * 3600;
+    if (epoch > RTC.get() + 5 || epoch + 5 < RTC.get()) {
+        tmElements_t tm_ntp;
+        breakTime(epoch, tm_ntp);
+        RTC.write(tm_ntp);
+        Serial.print("Time adjusted!!!");
+    }
 }
 
-SEMAPHORE_DECL(sem, 0);
-static THD_WORKING_AREA(waThread1, 64);
+unsigned long nextNtpSynchroTime = 5000;
+unsigned long nextTempUpdateTime = 10000;
+unsigned long nextPrintTime = 15000;
 
-static THD_FUNCTION(Thread1, arg) {
-    (void) arg;
-    while (!chThdShouldTerminateX()) {
+void loop() {
+    ethernet_loop();
+    receiveUdpNtpPacket();
+    if (nextNtpSynchroTime < millis()) {
+        nextNtpSynchroTime = millis() + NTP_SYNC_PERIOD;
         getNtpTime();
+    }
+    if (nextTempUpdateTime < millis()) {
+        nextTempUpdateTime = millis() + TEMP_UPDATE_PERIOD;
         readTemperature();
+    }
+    if (nextPrintTime < millis()) {
+        nextPrintTime = millis() + TEMP_UPDATE_PERIOD;
         printBME280Data(&Serial);
         Serial.print("DHT11:");
         Serial.print(dht11Temperature);
         Serial.print(" Celsius, Humidity(%):");
         Serial.println(dht11Humidity);
         rtcPrint(&Serial);
-        chThdSleepMilliseconds(10000);
     }
 }
 
-static THD_WORKING_AREA(waThread2, 64);
-
-static THD_FUNCTION(Thread2, arg) {
-    (void) arg;
-    while (true) {
-        ethernet_loop();
-        chThdSleepMilliseconds(10);
-    }
-}
-
-//------------------------------------------------------------------------------
-// continue setup() after chBegin().
-void chSetup() {
-    // Start threads.
-    chThdCreateStatic(waThread1, sizeof(waThread1),
-                      NORMALPRIO + 2, Thread1, NULL);
-
-    chThdCreateStatic(waThread2, sizeof(waThread2),
-                      NORMALPRIO + 1, Thread2, NULL);
-}
 
 bool isNtpTimeUsing = false;
 
@@ -372,23 +367,7 @@ void getNtpTime() {
         Serial.print("IP: ");
         Serial.print(ntpServerIP);
         sendNTPpacket(ntpServerIP); // send an NTP packet to a time server
-        chThdSleep(1000);
-        if (!udp.parsePacket()) {
-            Serial.println("no answer was received");
-        } else {
-            Serial.println("received");
-            udp.read(packetBuffer2, NTP_PACKET_SIZE); // read the packet into the buffer
-            unsigned long highWord = word(packetBuffer2[40], packetBuffer2[41]);
-            unsigned long lowWord = word(packetBuffer2[42], packetBuffer2[43]);
-            unsigned long secsSince1900 = highWord << 16 | lowWord;
-            unsigned long epoch = secsSince1900 - seventyYears + TIME_ZONE * 3600;
-            if (epoch > RTC.get() + 5 || epoch + 5 < RTC.get()) {
-                tmElements_t tm_ntp;
-                breakTime(epoch, tm_ntp);
-                RTC.write(tm_ntp);
-                Serial.print("Time adjusted!!!");
-            }
-        }
+
     } else {
         Serial.print("getHostByName Failed");
         Serial.print("ret = ");
