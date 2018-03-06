@@ -46,6 +46,7 @@ float bme280Temperature(NAN), bme280Humidity(NAN), bme280Pressure(NAN);
 float dht11Temperature(NAN), dht11Humidity(NAN);
 float ds18b20SteelTemperature(NAN), ds18b20ClockTemperature(NAN);
 
+bool nothing;
 
 const char *ntpServerName = "time.nist.gov";
 
@@ -290,13 +291,13 @@ void rtcPrint(Stream *stream) {
     tmElements_t tm_rtc_current;
     if (RTC.read(tm_rtc_current)) {
         stream->print("Ok, Time = ");
-        (tm_rtc_current.Hour >= 0 && tm_rtc_current.Hour < 10) ? stream->write('0') : stream->write('');
+        (tm_rtc_current.Hour >= 0 && tm_rtc_current.Hour < 10) ? stream->write('0') : nothing;
         stream->print(tm_rtc_current.Hour);
         stream->write(':');
-        (tm_rtc_current.Minute >= 0 && tm_rtc_current.Minute < 10) ? stream->write('0') : stream->write('');
+        (tm_rtc_current.Minute >= 0 && tm_rtc_current.Minute < 10) ? stream->write('0') : nothing;
         stream->print(tm_rtc_current.Minute);
         stream->write(':');
-        (tm_rtc_current.Second >= 0 && tm_rtc_current.Second < 10) ? stream->write('0') : stream->write('');
+        (tm_rtc_current.Second >= 0 && tm_rtc_current.Second < 10) ? stream->write('0') : nothing;
         stream->print(tm_rtc_current.Second);
         stream->print(", Date (D/M/Y) = ");
         stream->print(tm_rtc_current.Day);
