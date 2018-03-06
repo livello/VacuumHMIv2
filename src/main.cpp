@@ -276,27 +276,28 @@ void ds18b20Read(Stream *stream) {
 }
 //////////////////////////////////////////////////////////////////
 
-void print2digits(int number, Stream *stream) {
-    if (number >= 0 && number < 10) {
-        stream->write('0');
-    }
-    stream->print(number);
-}
 
+
+
+bool isRTC_using = false;
 void rtcPrint(Stream *stream) {
-    if (RTC.read(tm_rtc)) {
+    if(isRTC_using)
+        return;
+    isRTC_using = true;
+    tmElements_t tm_rtc_current;
+    if (RTC.read(tm_rtc_current)) {
         stream->print("Ok, Time = ");
-        print2digits(tm_rtc.Hour, stream);
+        (tm_rtc_current.Hour>= 0 && tm_rtc_current.Hour< 10)?stream->write('0'):stream->print(tm_rtc_current.Hour);
         stream->write(':');
-        print2digits(tm_rtc.Minute, stream);
+        (tm_rtc_current.Minute>= 0 && tm_rtc_current.Minute< 10)?stream->write('0'):stream->print(tm_rtc_current.Minute);
         stream->write(':');
-        print2digits(tm_rtc.Second, stream);
+        (tm_rtc_current.Second>= 0 && tm_rtc_current.Second< 10)?stream->write('0'):stream->print(tm_rtc_current.Second);
         stream->print(", Date (D/M/Y) = ");
-        stream->print(tm_rtc.Day);
+        stream->print(tm_rtc_current.Day);
         stream->write('/');
-        stream->print(tm_rtc.Month);
+        stream->print(tm_rtc_current.Month);
         stream->write('/');
-        stream->print(tmYearToCalendar(tm_rtc.Year));
+        stream->print(tmYearToCalendar(tm_rtc_current.Year));
         stream->println();
     } else {
         if (RTC.chipPresent()) {
@@ -308,6 +309,7 @@ void rtcPrint(Stream *stream) {
             stream->println();
         }
     }
+    isRTC_using = false;
 }
 
 void loop() {
