@@ -232,7 +232,7 @@ void ds18b20Read(Stream *stream) {
         ds.reset();
         ds.select(addr);
         ds.write(0x44, 1);        // start conversion, with parasite power on at the end
-//        delay(800);
+        delay(800);
         // we might do a ds.depower() here, but the reset will take care of it.
 
         present = ds.reset();
