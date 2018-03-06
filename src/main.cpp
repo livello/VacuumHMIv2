@@ -54,7 +54,6 @@ byte packetBuffer[NTP_PACKET_SIZE] = {0b11100011, 0, 6, 0xEC, 0, 0, 0, 0, 0, 0, 
                                       0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
                                       0}; //buffer to hold incoming and outgoing packets
 char packetBuffer2[NTP_PACKET_SIZE];
-IPAddress ntpServerIP; // time.nist.gov NTP server address
 EthernetUDP udp;
 DNSClient my_dns;
 
@@ -280,8 +279,6 @@ void ds18b20Read(Stream *stream) {
 }
 
 
-
-
 bool isRTC_using = false;
 
 void rtcPrint(Stream *stream) {
@@ -366,41 +363,38 @@ void chSetup() {
 }
 
 bool isNtpTimeUsing = false;
+
 void getNtpTime() {
-    if(isNtpTimeUsing)
+    if (isNtpTimeUsing)
         return;
     isNtpTimeUsing = true;
-    int ret = my_dns.getHostByName(ntpServerName, ntpServerIP);
-    if (ret == 1) {
+    IPAddress ntpServerIP;
+    int dnsResolveReturnCode = my_dns.getHostByName(ntpServerName, ntpServerIP);
+    if (dnsResolveReturnCode == 1) {
         Serial.print("IP: ");
         Serial.print(ntpServerIP);
+        sendNTPpacket(ntpServerIP); // send an NTP packet to a time server
+        chThdSleep(1000);
+        if (!udp.parsePacket()) {
+            Serial.println("no answer was received");
+        } else {
+            Serial.println("received");
+            udp.read(packetBuffer2, NTP_PACKET_SIZE); // read the packet into the buffer
+            unsigned long highWord = word(packetBuffer2[40], packetBuffer2[41]);
+            unsigned long lowWord = word(packetBuffer2[42], packetBuffer2[43]);
+            unsigned long secsSince1900 = highWord << 16 | lowWord;
+            unsigned long epoch = secsSince1900 - seventyYears + TIME_ZONE * 3600;
+            if (epoch > RTC.get() + 5 || epoch + 5 < RTC.get()) {
+                tmElements_t tm_ntp;
+                breakTime(epoch, tm_ntp);
+                RTC.write(tm_ntp);
+                Serial.print("Time adjusted!!!");
+            }
+        }
     } else {
         Serial.print("getHostByName Failed");
         Serial.print("ret = ");
-        Serial.print(ret);
-        isNtpTimeUsing = false;
-        return;
-    }
-    sendNTPpacket(ntpServerIP); // send an NTP packet to a time server
-    chThdSleep(1000);
-    if (!udp.parsePacket()) {
-        Serial.println("no answer was received");
-        return;
-    } else {
-        Serial.println("received");
-        udp.read(packetBuffer2, NTP_PACKET_SIZE); // read the packet into the buffer
-        unsigned long highWord = word(packetBuffer2[40], packetBuffer2[41]);
-        unsigned long lowWord = word(packetBuffer2[42], packetBuffer2[43]);
-        unsigned long secsSince1900 = highWord << 16 | lowWord;
-        unsigned long epoch = secsSince1900 - seventyYears + TIME_ZONE * 3600;
-        if (epoch > RTC.get() + 5 || epoch + 5 < RTC.get()) {
-            tmElements_t tm_ntp;
-            breakTime(epoch, tm_ntp);
-            RTC.write(tm_ntp);
-            Serial.print("Time adjusted!!!");
-        }
-
-        rtcPrint(&Serial);
+        Serial.print(dnsResolveReturnCode);
     }
     isNtpTimeUsing = false;
 }
