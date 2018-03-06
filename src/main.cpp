@@ -117,7 +117,7 @@ void ethernet_loop() {
     // listen for incoming clients
     EthernetClient client = server.available();
     if (client) {
-        Serial.println("new client");
+        Serial.println("new web client");
         // an http request ends with a blank line
         boolean currentLineIsBlank = true;
         while (client.connected()) {
@@ -156,10 +156,10 @@ void ethernet_loop() {
             }
         }
         // give the web browser time to receive the data
-        chThdSleepMilliseconds(10);
+//        chThdSleepMilliseconds(10);
         // close the connection:
         client.stop();
-        Serial.println("client disconnected");
+//        Serial.println("client disconnected");
     }
 }
 
@@ -343,7 +343,7 @@ static THD_FUNCTION(Thread2, arg) {
     (void) arg;
     while (true) {
         ethernet_loop();
-        chThdSleepMilliseconds(100);
+        chThdSleepMilliseconds(10);
     }
 }
 
