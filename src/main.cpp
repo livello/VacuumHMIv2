@@ -28,6 +28,7 @@
 #define NTP_PACKET_SIZE 48
 
 #define NTP_SYNC_PERIOD 60000
+#define NTP_RETRY_ON_ERROR_PERIOD 5000
 #define TEMP_UPDATE_PERIOD 30000
 DHT dht11Sensor(DHT11_PIN, DHT11);
 OneWire ds(DS18B20_CLOCK_PIN);  // on pin 10 (a 4.7K resistor is necessary)
@@ -69,7 +70,9 @@ void printBME280Data(Stream *stream);
 
 void sendNTPpacket(IPAddress &address);
 
-void getNtpTime();
+bool getNtpTime();
+
+void printDHT11(Stream *stream);
 
 //////////////////////////////////////////////////////////////////
 void ethernet_setup() {
@@ -106,7 +109,7 @@ void setup() {
     ethernet_setup();
     for (int i = 0; i < RELAYS_NUM; i++) {
         pinMode(relayPins[i], OUTPUT);
-        digitalWrite(relayPins[i], LOW);
+        digitalWrite(relayPins[i], HIGH);
     }
     dht11Sensor.begin();
 }
@@ -138,9 +141,11 @@ void ethernet_loop() {
                     // output the value of each analog input pin
                     rtcPrint(&client);
                     client.println("<br />");
-//                    printBME280Data(&client);
+                    printBME280Data(&client);
                     client.println("<br />");
-//                    ds18b20Read(&client);
+                    printDHT11(&client);
+                    client.println("<br />");
+                    ds18b20Read(&client);
                     client.println("</html>");
                     break;
                 }
@@ -337,8 +342,10 @@ void loop() {
     ethernet_loop();
     receiveUdpNtpPacket();
     if (nextNtpSynchroTime < millis()) {
-        nextNtpSynchroTime = millis() + NTP_SYNC_PERIOD;
-        getNtpTime();
+        if(getNtpTime())
+            nextNtpSynchroTime = millis() + NTP_SYNC_PERIOD;
+        else
+            nextNtpSynchroTime = millis() + NTP_RETRY_ON_ERROR_PERIOD;
     }
     if (nextTempUpdateTime < millis()) {
         nextTempUpdateTime = millis() + TEMP_UPDATE_PERIOD;
@@ -347,20 +354,25 @@ void loop() {
     if (nextPrintTime < millis()) {
         nextPrintTime = millis() + TEMP_UPDATE_PERIOD;
         printBME280Data(&Serial);
-        Serial.print("DHT11:");
-        Serial.print(dht11Temperature);
-        Serial.print(" Celsius, Humidity(%):");
-        Serial.println(dht11Humidity);
+        printDHT11(&Serial);
         rtcPrint(&Serial);
     }
+}
+
+void printDHT11(Stream *stream) {
+    stream->print("DHT11:");
+    stream->print(dht11Temperature);
+    stream->print(" Celsius, Humidity(%):");
+    stream->println(dht11Humidity);
 }
 
 
 bool isNtpTimeUsing = false;
 
-void getNtpTime() {
+bool getNtpTime() {
+    bool result = false;
     if (isNtpTimeUsing)
-        return;
+        return result;
     isNtpTimeUsing = true;
     IPAddress ntpServerIP;
     int dnsResolveReturnCode = my_dns.getHostByName(ntpServerName, ntpServerIP);
@@ -368,6 +380,7 @@ void getNtpTime() {
         Serial.print("IP: ");
         Serial.print(ntpServerIP);
         sendNTPpacket(ntpServerIP); // send an NTP packet to a time server
+        result = true;
 
     } else {
         Serial.print("getHostByName Failed");
@@ -375,6 +388,7 @@ void getNtpTime() {
         Serial.print(dnsResolveReturnCode);
     }
     isNtpTimeUsing = false;
+    return result;
 }
 
 // send an NTP request to the time server at the given address
