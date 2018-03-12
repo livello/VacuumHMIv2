@@ -119,7 +119,7 @@ void setup() {
 
 int pinState[] = {0, 0, 0, 0, 0, 0, 0, 0};  // Состояние пинов
 void updateRelays() {
-    for (int i = 0; i < 4; i++) {
+    for (int i = 0; i < RELAYS_NUM; i++) {
         if (pinState[i])
             digitalWrite(relayPins[i], HIGH);
         else
@@ -150,7 +150,7 @@ void sendMainPage(EthernetClient &client) {
     client.println();
     client.println("<!DOCTYPE HTML>");
     client.println("<html>");
-    client.println("<meta http-equiv=\"refresh\" content=\"30\">");
+    client.println("<meta http-equiv=\"refresh\" content=\"60\">");
     sendRelayControlForm(&client);
     rtcPrint(&client);
     client.println("<br />");
@@ -186,12 +186,11 @@ void ethernet_loop() {
         } else if (webRequestType.compareTo("POST ") == 0) {
             String clientRequest = client.readString();
             Serial.println(clientRequest);
-             (clientRequest.indexOf("r0=on") > 0)?pinState[0] = 1:pinState[0] = 0;
-            (clientRequest.indexOf("r1=on") > 0)?pinState[1] = 1:pinState[1] = 0;
-            (clientRequest.indexOf("r2=on") > 0)?pinState[2] = 1:pinState[2] = 0;
-            (clientRequest.indexOf("r3=on") > 0)?pinState[3] = 1:pinState[3] = 0;
-            (clientRequest.indexOf("r4=on") > 0)?pinState[4] = 1:pinState[4] = 0;
-            (clientRequest.indexOf("r5=on") > 0)?pinState[5] = 1:pinState[5] = 0;
+            char *rOnSequence = "r0=on";
+            for(int i=0;i<RELAYS_NUM;i++){
+                rOnSequence[1]='0'+i;
+                (clientRequest.indexOf(rOnSequence) > 0)?pinState[i] = 1:pinState[i] = 0;
+            }
             updateRelays();
             sendMainPage(client);
         } else {
