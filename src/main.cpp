@@ -128,18 +128,18 @@ void updateRelays() {
 }
 
 void sendRelayControlForm(Stream *stream) {
-    stream->println("<form method='post'>");
+    stream->println("<form method='post'> \n");
     for (int i = 0; i < RELAYS_NUM; i++) {
         stream->print("<div>Relay ");
         stream->print(i);
         stream->print(" <input type='checkbox' ");
         (pinState[i] == 1) ? stream->print("checked") : nothing;
-        stream->println(" name='r");
-        stream->println(i);
-        stream->println("'></div>");
+        stream->print(" name='r");
+        stream->print(i);
+        stream->print("'></div>\n");
     }
-    stream->println("<input type='submit' value='Refresh'>");
-    stream->println("</form>");
+    stream->print("<input type='submit' value='Refresh'>\n");
+    stream->print("</form>\n");
 }
 
 void sendMainPage(EthernetClient &client) {
