@@ -109,7 +109,7 @@ void setup() {
     ethernet_setup();
     for (int i = 0; i < RELAYS_NUM; i++) {
         pinMode(relayPins[i], OUTPUT);
-        if(i==1||i==4)
+        if (i == 1 || i == 4)
             digitalWrite(relayPins[i], LOW);
         else
             digitalWrite(relayPins[i], HIGH);
@@ -117,55 +117,90 @@ void setup() {
     dht11Sensor.begin();
 }
 
+int pinState[] = {0, 0, 0, 0, 0, 0, 0, 0};  // Состояние пинов
+void updateRelays() {
+    for (int i = 0; i < 4; i++) {
+        if (pinState[i])
+            digitalWrite(relayPins[i], HIGH);
+        else
+            digitalWrite(relayPins[i], LOW);
+    }
+}
+
+void sendRelayControlForm(Stream *stream) {
+    stream->println("<form method='post'>");
+    for (int i = 0; i < RELAYS_NUM; i++) {
+        stream->print("<div>Relay ");
+        stream->print(i);
+        stream->print(" <input type='checkbox' ");
+        (pinState[i] == 1) ? stream->print("checked") : nothing;
+        stream->println(" name='r");
+        stream->println(i);
+        stream->println("'></div>");
+    }
+    stream->println("<input type='submit' value='Refresh'>");
+    stream->println("</form>");
+}
+
+void sendMainPage(EthernetClient &client) {
+    client.println("HTTP/1.1 200 OK");
+    client.println("Content-Type: text/html");
+    client.println(
+            "Connection: close");  // the connection will be closed after completion of the response
+    client.println("Refresh: 15");
+    client.println();
+    client.println("<!DOCTYPE HTML>");
+    client.println("<html>");
+    client.println("<meta http-equiv=\"refresh\" content=\"30\">");
+    sendRelayControlForm(&client);
+    rtcPrint(&client);
+    client.println("<br />");
+    printBME280Data(&client);
+    client.println("<br />");
+    printDHT11(&client);
+    client.println("<br />");
+    ds18b20Read(&client);
+    client.println("</html>");
+}
+
 void ethernet_loop() {
-    // listen for incoming clients
     EthernetClient client = server.available();
     if (client) {
-        Serial.println("new web client");
-        // an http request ends with a blank line
-        boolean currentLineIsBlank = true;
-        while (client.connected()) {
-            if (client.available()) {
-                char c = client.read();
-//                Serial.write(c);
-                // if you've gotten to the end of the line (received a newline
-                // character) and the line is blank, the http request has ended,
-                // so you can send a reply
-                if (c == '\n' && currentLineIsBlank) {
-                    // send a standard http response header
-                    client.println("HTTP/1.1 200 OK");
-                    client.println("Content-Type: text/html");
-                    client.println(
-                            "Connection: close");  // the connection will be closed after completion of the response
-                    client.println("Refresh: 15");
-                    client.println();
-                    client.println("<!DOCTYPE HTML>");
-                    client.println("<html>");
-                    // output the value of each analog input pin
-                    rtcPrint(&client);
-                    client.println("<br />");
-                    printBME280Data(&client);
-                    client.println("<br />");
-                    printDHT11(&client);
-                    client.println("<br />");
-                    ds18b20Read(&client);
-                    client.println("</html>");
-                    break;
-                }
-                if (c == '\n') {
-                    // you're starting a new line
-                    currentLineIsBlank = true;
-                } else if (c != '\r') {
-                    // you've gotten a character on the current line
-                    currentLineIsBlank = false;
+        String webRequestType = client.readStringUntil('/');
+        if (webRequestType.compareTo("GET ") == 0) {
+            boolean currentLineIsBlank = true;
+            while (client.connected()) {
+                if (client.available()) {
+                    char c = client.read();
+                    if (c == '\n' && currentLineIsBlank) {
+                        // send a standard http response header
+                        sendMainPage(client);
+                        break;
+                    }
+                    if (c == '\n') {
+                        currentLineIsBlank = true;
+                    } else if (c != '\r') {
+                        currentLineIsBlank = false;
+                    }
                 }
             }
+        } else if (webRequestType.compareTo("POST ") == 0) {
+            String clientRequest = client.readString();
+             (clientRequest.indexOf("r0=on") > 0)?pinState[0] = 1:pinState[0] = 0;
+            (clientRequest.indexOf("r1=on") > 0)?pinState[1] = 1:pinState[1] = 0;
+            (clientRequest.indexOf("r2=on") > 0)?pinState[2] = 1:pinState[2] = 0;
+            (clientRequest.indexOf("r3=on") > 0)?pinState[3] = 1:pinState[3] = 0;
+            (clientRequest.indexOf("r4=on") > 0)?pinState[4] = 1:pinState[4] = 0;
+            (clientRequest.indexOf("r5=on") > 0)?pinState[5] = 1:pinState[5] = 0;
+            updateRelays();
+            sendMainPage(client);
+        } else {
+            Serial.println("." + webRequestType + ". - uknown webRequestType");
+            Serial.println("" + client.readString());
+            sendMainPage(client);
         }
-        // give the web browser time to receive the data
-//        chThdSleepMilliseconds(10);
-        // close the connection:
+
         client.stop();
-//        Serial.println("client disconnected");
     }
 }
 
@@ -334,6 +369,7 @@ void receiveUdpNtpPacket() {
         }
     }
 }
+
 
 unsigned long nextNtpSynchroTime = 5000;
 unsigned long nextTempUpdateTime = 10000;
