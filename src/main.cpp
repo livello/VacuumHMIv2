@@ -17,11 +17,11 @@
 
 #define SERIAL_BAUD 230400
 #define RELAYS_NUM 14
-#define DHT11_PIN 51
+#define DHT11_PIN 46
 #define DS18B20_CLOCK_PIN 49
 #define DS18B20_STEEL_PIN 34
 #define SOIL_SENSOR_PIN1 A0
-#define SOIL_SENSOR_PIN2 53
+#define SOIL_SENSOR_PIN2 48
 #define NTP_UDP_PORT 2390
 #define TIME_ZONE 3
 #define seventyYears 2208988800UL
