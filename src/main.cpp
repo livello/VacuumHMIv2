@@ -143,7 +143,6 @@ void sendMainPage(EthernetClient &client) {
     client.println("Content-Type: text/html");
     client.println(
             "Connection: close");  // the connection will be closed after completion of the response
-    client.println();
     client.println("<!DOCTYPE HTML>");
     client.println("<html>");
     client.println("<meta http-equiv=\"refresh\" content=\"60\">");
