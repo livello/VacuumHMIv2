@@ -147,7 +147,6 @@ void sendMainPage(EthernetClient &client) {
     client.println("Content-Type: text/html");
     client.println(
             "Connection: close");  // the connection will be closed after completion of the response
-    client.println("Refresh: 15");
     client.println();
     client.println("<!DOCTYPE HTML>");
     client.println("<html>");
@@ -186,6 +185,7 @@ void ethernet_loop() {
             }
         } else if (webRequestType.compareTo("POST ") == 0) {
             String clientRequest = client.readString();
+            Serial.println(clientRequest);
              (clientRequest.indexOf("r0=on") > 0)?pinState[0] = 1:pinState[0] = 0;
             (clientRequest.indexOf("r1=on") > 0)?pinState[1] = 1:pinState[1] = 0;
             (clientRequest.indexOf("r2=on") > 0)?pinState[2] = 1:pinState[2] = 0;
