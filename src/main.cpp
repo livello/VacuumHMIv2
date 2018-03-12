@@ -37,7 +37,7 @@ byte mac[] = my_personal_mac_address;
 IPAddress ip(192, 168, 3, 177);
 EthernetServer server(80);
 tmElements_t tm_rtc;
-const int relayPins[] = {31, 33, 35, 37, 39, 41,22,24,26,28,30,32,34,36};
+const int relayPins[] = {31, 33, 35, 37, 39, 41, 22, 24, 26, 28, 30, 32, 34, 36};
 
 BME280I2C bme;    // Default : forced mode, standby time = 1000 ms
 BME280::TempUnit tempUnit(BME280::TempUnit_Celsius);
@@ -109,8 +109,10 @@ void setup() {
     ethernet_setup();
     for (int i = 0; i < RELAYS_NUM; i++) {
         pinMode(relayPins[i], OUTPUT);
-        if(i>5)
-        digitalWrite(relayPins[i], LOW);
+        if (i > 8)
+            digitalWrite(relayPins[i], HIGH);
+        else
+            digitalWrite(relayPins[i], LOW);
     }
     dht11Sensor.begin();
 }
@@ -341,7 +343,7 @@ void loop() {
     ethernet_loop();
     receiveUdpNtpPacket();
     if (nextNtpSynchroTime < millis()) {
-        if(getNtpTime())
+        if (getNtpTime())
             nextNtpSynchroTime = millis() + NTP_SYNC_PERIOD;
         else
             nextNtpSynchroTime = millis() + NTP_RETRY_ON_ERROR_PERIOD;
