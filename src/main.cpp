@@ -16,12 +16,12 @@
 #endif
 
 #define SERIAL_BAUD 230400
-#define RELAYS_NUM 6
-#define DHT11_PIN 36
-#define DS18B20_CLOCK_PIN 38
+#define RELAYS_NUM 14
+#define DHT11_PIN 51
+#define DS18B20_CLOCK_PIN 49
 #define DS18B20_STEEL_PIN 34
 #define SOIL_SENSOR_PIN1 A0
-#define SOIL_SENSOR_PIN2 40
+#define SOIL_SENSOR_PIN2 53
 #define NTP_UDP_PORT 2390
 #define TIME_ZONE 3
 #define seventyYears 2208988800UL
@@ -37,7 +37,7 @@ byte mac[] = my_personal_mac_address;
 IPAddress ip(192, 168, 3, 177);
 EthernetServer server(80);
 tmElements_t tm_rtc;
-const int relayPins[] = {31, 33, 35, 37, 39, 41};
+const int relayPins[] = {31, 33, 35, 37, 39, 41,22,24,26,28,30,32,34,36};
 
 BME280I2C bme;    // Default : forced mode, standby time = 1000 ms
 BME280::TempUnit tempUnit(BME280::TempUnit_Celsius);
