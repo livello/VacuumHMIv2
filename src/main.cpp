@@ -142,23 +142,23 @@ void sendRelayControlForm(Stream *stream) {
     stream->println("</form>");
 }
 
-void sendMainPage(EthernetClient &client) {
-    client.println("HTTP/1.1 200 OK");
-    client.println("Content-Type: text/html");
-    client.println(
+void sendMainPage(EthernetClient *client) {
+    client->println("HTTP/1.1 200 OK");
+    client->println("Content-Type: text/html");
+    client->println(
             "Connection: close");  // the connection will be closed after completion of the response
-    client.println("<!DOCTYPE HTML>");
-    client.println("<html>");
-    client.println("<meta http-equiv=\"refresh\" content=\"60\">");
-    sendRelayControlForm(&client);
-    rtcPrint(&client);
-    client.println("<br />");
-    printBME280Data(&client);
-    client.println("<br />");
-    printDHT11(&client);
-    client.println("<br />");
-    ds18b20Read(&client);
-    client.println("</html>");
+    client->println("<!DOCTYPE HTML>");
+    client->println("<html>");
+    client->println("<meta http-equiv=\"refresh\" content=\"60\">");
+    sendRelayControlForm(client);
+    rtcPrint(client);
+    client->println("<br />");
+    printBME280Data(client);
+    client->println("<br />");
+    printDHT11(client);
+    client->println("<br />");
+    ds18b20Read(client);
+    client->println("</html>");
 }
 
 void ethernet_loop() {
@@ -167,7 +167,7 @@ void ethernet_loop() {
         String webRequestType = client.readStringUntil('/');
         Serial.println(webRequestType);
         if (webRequestType.compareTo("GET ") == 0) {
-            sendMainPage(client);
+            sendMainPage(&client);
         } else if (webRequestType.compareTo("POST ") == 0) {
             String clientRequest = client.readString();
             Serial.println(clientRequest);
@@ -178,11 +178,11 @@ void ethernet_loop() {
             (clientRequest.indexOf("r4=on") > 0) ? pinState[4] = 1 : pinState[4] = 0;
             (clientRequest.indexOf("r5=on") > 0) ? pinState[5] = 1 : pinState[5] = 0;
             updateRelays();
-            sendMainPage(client);
+            sendMainPage(&client);
         } else {
             Serial.println("." + webRequestType + ". - uknown webRequestType");
             Serial.println("" + client.readString());
-            sendMainPage(client);
+            sendMainPage(&client);
         }
 
         client.stop();
