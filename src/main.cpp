@@ -109,7 +109,7 @@ void setup() {
     ethernet_setup();
     for (int i = 0; i < RELAYS_NUM; i++) {
         pinMode(relayPins[i], OUTPUT);
-            digitalWrite(relayPins[i], LOW);
+            digitalWrite(relayPins[i], HIGH);
     }
     dht11Sensor.begin();
 }
