@@ -167,31 +167,16 @@ void ethernet_loop() {
         String webRequestType = client.readStringUntil('/');
         Serial.println(webRequestType);
         if (webRequestType.compareTo("GET ") == 0) {
-            boolean currentLineIsBlank = true;
-            while (client.connected()) {
-                if (client.available()) {
-                    char c = client.read();
-                    if (c == '\n' && currentLineIsBlank) {
-                        // send a standard http response header
-                        sendMainPage(client);
-                        break;
-                    }
-                    if (c == '\n') {
-                        currentLineIsBlank = true;
-                    } else if (c != '\r') {
-                        currentLineIsBlank = false;
-                    }
-                }
-            }
+            sendMainPage(client);
         } else if (webRequestType.compareTo("POST ") == 0) {
             String clientRequest = client.readString();
             Serial.println(clientRequest);
-             (clientRequest.indexOf("r0=on") > 0)?pinState[0] = 1:pinState[0] = 0;
-            (clientRequest.indexOf("r1=on") > 0)?pinState[1] = 1:pinState[1] = 0;
-            (clientRequest.indexOf("r2=on") > 0)?pinState[2] = 1:pinState[2] = 0;
-            (clientRequest.indexOf("r3=on") > 0)?pinState[3] = 1:pinState[3] = 0;
-            (clientRequest.indexOf("r4=on") > 0)?pinState[4] = 1:pinState[4] = 0;
-            (clientRequest.indexOf("r5=on") > 0)?pinState[5] = 1:pinState[5] = 0;
+            (clientRequest.indexOf("r0=on") > 0) ? pinState[0] = 1 : pinState[0] = 0;
+            (clientRequest.indexOf("r1=on") > 0) ? pinState[1] = 1 : pinState[1] = 0;
+            (clientRequest.indexOf("r2=on") > 0) ? pinState[2] = 1 : pinState[2] = 0;
+            (clientRequest.indexOf("r3=on") > 0) ? pinState[3] = 1 : pinState[3] = 0;
+            (clientRequest.indexOf("r4=on") > 0) ? pinState[4] = 1 : pinState[4] = 0;
+            (clientRequest.indexOf("r5=on") > 0) ? pinState[5] = 1 : pinState[5] = 0;
             updateRelays();
             sendMainPage(client);
         } else {
