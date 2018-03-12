@@ -117,72 +117,82 @@ void setup() {
     dht11Sensor.begin();
 }
 
-int pinState[] = {1, 0, 1, 0, 0, 0, 0, 0};  // Состояние пинов
+int pinState[] = {0, 0, 0, 0, 0, 0, 0, 0};  // Состояние пинов
 void updateRelays() {
-    for (int i = 0; i < 4; i++) {
-        if (pinState[i])
-            digitalWrite(relayPins[i], HIGH);
-        else
-            digitalWrite(relayPins[i], LOW);
-    }
+    for (int i = 0; i < RELAYS_NUM; i++)
+        digitalWrite(relayPins[i], !pinState[i]);
 }
 
 void sendRelayControlForm(Stream *stream) {
-    stream->println("<form method='post'>");
+    stream->println("<form method='post'> \n");
     for (int i = 0; i < RELAYS_NUM; i++) {
         stream->print("<div>Relay ");
         stream->print(i);
         stream->print(" <input type='checkbox' ");
         (pinState[i] == 1) ? stream->print("checked") : nothing;
-        stream->println(" name='r");
-        stream->println(i);
-        stream->println("'></div>");
+        stream->print(" name='r");
+        stream->print(i);
+        stream->print("'></div>\n");
     }
-    stream->println("<input type='submit' value='Refresh'>");
-    stream->println("</form>");
+    stream->print("<input type='submit' value='Refresh'>\n");
+    stream->print("</form>\n");
 }
 
-void sendMainPage(EthernetClient *client) {
-    client->println("HTTP/1.1 200 OK");
-    client->println("Content-Type: text/html");
-    client->println(
+void sendMainPage(EthernetClient &client) {
+    client.println("HTTP/1.1 200 OK");
+    client.println("Content-Type: text/html");
+    client.println(
             "Connection: close");  // the connection will be closed after completion of the response
-    client->println("<!DOCTYPE HTML>");
-    client->println("<html>");
-    client->println("<meta http-equiv=\"refresh\" content=\"60\">");
-    sendRelayControlForm(client);
-    rtcPrint(client);
-    client->println("<br />");
-    printBME280Data(client);
-    client->println("<br />");
-    printDHT11(client);
-    client->println("<br />");
-    ds18b20Read(client);
-    client->println("</html>");
+    client.println();
+    client.println("<!DOCTYPE HTML>");
+    client.println("<html>");
+    client.println("<meta http-equiv=\"refresh\" content=\"60\">");
+    sendRelayControlForm(&client);
+    rtcPrint(&client);
+    client.println("<br />");
+    printBME280Data(&client);
+    client.println("<br />");
+    printDHT11(&client);
+    client.println("<br />");
+    ds18b20Read(&client);
+    client.println("</html>");
 }
 
 void ethernet_loop() {
     EthernetClient client = server.available();
     if (client) {
         String webRequestType = client.readStringUntil('/');
-        Serial.println(webRequestType);
         if (webRequestType.compareTo("GET ") == 0) {
-            sendMainPage(&client);
+            boolean currentLineIsBlank = true;
+            while (client.connected()) {
+                if (client.available()) {
+                    char c = client.read();
+                    if (c == '\n' && currentLineIsBlank) {
+                        // send a standard http response header
+                        sendMainPage(client);
+                        break;
+                    }
+                    if (c == '\n') {
+                        currentLineIsBlank = true;
+                    } else if (c != '\r') {
+                        currentLineIsBlank = false;
+                    }
+                }
+            }
         } else if (webRequestType.compareTo("POST ") == 0) {
             String clientRequest = client.readString();
             Serial.println(clientRequest);
-            (clientRequest.indexOf("r0=on") > 0) ? pinState[0] = 1 : pinState[0] = 0;
-            (clientRequest.indexOf("r1=on") > 0) ? pinState[1] = 1 : pinState[1] = 0;
-            (clientRequest.indexOf("r2=on") > 0) ? pinState[2] = 1 : pinState[2] = 0;
-            (clientRequest.indexOf("r3=on") > 0) ? pinState[3] = 1 : pinState[3] = 0;
-            (clientRequest.indexOf("r4=on") > 0) ? pinState[4] = 1 : pinState[4] = 0;
-            (clientRequest.indexOf("r5=on") > 0) ? pinState[5] = 1 : pinState[5] = 0;
+            char *rOnSequence = "r0=on";
+            for (int i = 0; i < RELAYS_NUM; i++) {
+                rOnSequence[1] = '0' + i;
+                (clientRequest.indexOf(rOnSequence) > 0) ? pinState[i] = 1 : pinState[i] = 0;
+            }
             updateRelays();
-            sendMainPage(&client);
+            sendMainPage(client);
         } else {
             Serial.println("." + webRequestType + ". - uknown webRequestType");
             Serial.println("" + client.readString());
-            sendMainPage(&client);
+            sendMainPage(client);
         }
 
         client.stop();
