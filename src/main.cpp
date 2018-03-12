@@ -119,12 +119,8 @@ void setup() {
 
 int pinState[] = {0, 0, 0, 0, 0, 0, 0, 0};  // Состояние пинов
 void updateRelays() {
-    for (int i = 0; i < RELAYS_NUM; i++) {
-        if (pinState[i])
-            digitalWrite(relayPins[i], HIGH);
-        else
-            digitalWrite(relayPins[i], LOW);
-    }
+    for (int i = 0; i < RELAYS_NUM; i++)
+        digitalWrite(relayPins[i], !pinState[i]);
 }
 
 void sendRelayControlForm(Stream *stream) {
@@ -187,9 +183,9 @@ void ethernet_loop() {
             String clientRequest = client.readString();
             Serial.println(clientRequest);
             char *rOnSequence = "r0=on";
-            for(int i=0;i<RELAYS_NUM;i++){
-                rOnSequence[1]='0'+i;
-                (clientRequest.indexOf(rOnSequence) > 0)?pinState[i] = 1:pinState[i] = 0;
+            for (int i = 0; i < RELAYS_NUM; i++) {
+                rOnSequence[1] = '0' + i;
+                (clientRequest.indexOf(rOnSequence) > 0) ? pinState[i] = 1 : pinState[i] = 0;
             }
             updateRelays();
             sendMainPage(client);
