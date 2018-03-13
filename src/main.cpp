@@ -20,8 +20,8 @@
 #define DHT11_PIN 46
 #define DS18B20_CLOCK_PIN 49
 #define DS18B20_STEEL_PIN 34
-#define SOIL_SENSOR_PIN1 A0
-#define SOIL_SENSOR_PIN2 48
+#define SOIL_SENSOR_PIN_ANALOG A0
+#define SOIL_SENSOR_PIN_DIGITAL 48
 #define NTP_UDP_PORT 2390
 #define TIME_ZONE 3
 #define seventyYears 2208988800UL
@@ -115,6 +115,19 @@ void setup() {
             digitalWrite(relayPins[i], HIGH);
     }
     dht11Sensor.begin();
+    pinMode(SOIL_SENSOR_PIN_DIGITAL,INPUT_PULLUP);
+
+}
+    float soilHumidity=0;
+    bool isSoilHumidityLevel = 0;
+void readSoilSensor(Stream *stream){
+    soilHumidity = map(analogRead(SOIL_SENSOR_PIN_ANALOG),550,10,0,100);
+    isSoilHumidityLevel = digitalRead(SOIL_SENSOR_PIN_DIGITAL);
+    stream->print("SoilHumidity:");
+    stream->print(soilHumidity);
+    stream->print(" units, LEVEL:");
+    stream->print(isSoilHumidityLevel);
+    stream->print("<br />\n");
 }
 
 int pinState[] = {0, 0, 0, 0, 0, 0, 0, 0};  // Состояние пинов
@@ -155,6 +168,7 @@ void sendMainPage(EthernetClient &client) {
     printDHT11(&client);
     client.println("<br />");
     ds18b20Read(&client);
+    readSoilSensor(&client);
     client.println("</html>");
 }
 
@@ -388,6 +402,8 @@ void loop() {
         printBME280Data(&Serial);
         printDHT11(&Serial);
         rtcPrint(&Serial);
+        readSoilSensor(&Serial);
+
     }
 }
 
