@@ -118,13 +118,16 @@ void setup() {
     pinMode(SOIL_SENSOR_PIN_DIGITAL,INPUT_PULLUP);
 
 }
-    float soilHumidity=0;
+    float soilHumidityUnits=0, soilHumidityRaw;
     bool isSoilHumidityLevel = 0;
 void readSoilSensor(Stream *stream){
-    soilHumidity = map(analogRead(SOIL_SENSOR_PIN_ANALOG),550,10,0,100);
+    soilHumidityRaw = analogRead(SOIL_SENSOR_PIN_ANALOG);
+    soilHumidityUnits = map(soilHumidityRaw,550,10,0,100);
     isSoilHumidityLevel = digitalRead(SOIL_SENSOR_PIN_DIGITAL);
     stream->print("SoilHumidity:");
-    stream->print(soilHumidity);
+    stream->print(soilHumidityRaw);
+    stream->print(" raw, ");
+    stream->print(soilHumidityUnits);
     stream->print(" units, LEVEL:");
     stream->print(isSoilHumidityLevel);
     stream->print("<br />\n");
