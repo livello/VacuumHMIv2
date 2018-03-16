@@ -1,0 +1,70 @@
+1   TX
+2   IRQ
+3   IRQ
+4   W5100 Shield
+5
+6
+7
+8
+9
+10  W5100 shield
+11
+12
+13
+14
+15
+16
+17
+18  IRQ
+19  IRQ
+20  IRQ
+21  IRQ
+22
+23
+24
+25
+26
+27
+28
+29
+30
+31  RELAY1
+32
+33  RELAY2
+34
+35  RELAY3
+36
+37  RELAY4
+38
+39  RELAY5
+40
+41  RELAY6
+42
+43
+44
+45
+46  DHT11
+47
+48  SoilSensorDigital
+49  DS18B20 Clock
+50  W5100 Shield
+51  W5100 Shield
+52  W5100 Shield
+53  W5100 Shield
+A0  SoilSensorAnalog
+A1
+A2
+A3
+A4
+A5
+A6
+A7
+A8
+A9
+A10
+A11
+A12
+A13
+A14
+A15
+A16
