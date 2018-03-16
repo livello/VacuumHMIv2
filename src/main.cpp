@@ -29,6 +29,7 @@
 #define NTP_SYNC_PERIOD 300000
 #define NTP_RETRY_ON_ERROR_PERIOD 5000
 #define TEMP_UPDATE_PERIOD 30000
+#define FLOW_MEASURE_PIN 19
 DHT dht11Sensor(DHT11_PIN, DHT11);
 OneWire ds(DS18B20_CLOCK_PIN);  // on pin 10 (a 4.7K resistor is necessary)
 
@@ -72,6 +73,9 @@ void sendNTPpacket(IPAddress &address);
 bool getNtpTime();
 
 void printDHT11(Stream *stream);
+
+void countFlowControl(Stream *stream);
+void setup_Flow_Control();
 
 //////////////////////////////////////////////////////////////////
 void ethernet_setup() {
@@ -172,8 +176,9 @@ void sendMainPage(EthernetClient &client) {
     client.println("<br />");
     printDHT11(&client);
     client.println("<br />");
-    ds18b20Read(&client);
+//    ds18b20Read(&client);
     readSoilSensor(&client);
+    countFlowControl(&client);
     client.println("</html>");
 }
 
@@ -450,4 +455,39 @@ void sendNTPpacket(IPAddress &address) {
     udp.beginPacket(address, 123); //NTP requests are to port 123
     udp.write(packetBuffer, NTP_PACKET_SIZE);
     udp.endPacket();
+}
+
+volatile int  flow_elapsed;  // Measures flow meter pulses
+int flow_last_measured = 0;
+unsigned int  l_hour;          // Calculated litres/hour
+unsigned char flowmeter = 2;  // Flow Meter Pin number
+unsigned long currentTime;
+unsigned long time_flow_last_measured;
+
+
+void flow ()                  // Interruot function
+{
+    flow_elapsed++;
+}
+void setup_Flow_Control() {
+
+    pinMode(flowmeter, INPUT);
+    attachInterrupt(FLOW_MEASURE_PIN, flow, RISING);
+    sei();                            // Enable interrupts
+    currentTime = millis();
+    time_flow_last_measured = currentTime;
+}
+void countFlowControl(Stream *stream) {
+    currentTime = millis();
+    float litres = flow_elapsed/7.5/60.0;
+// Pulse frequency (Hz) = 7.5Q, Q is flow rate in L/min. (Results in +/- 3% range)
+    l_hour = ((flow_elapsed-flow_last_measured) * 60 / 7.5*1000.0/(currentTime - time_flow_last_measured)); // (Pulse frequency x 60 min) / 7.5Q = flow rate in L/hour
+    flow_last_measured = flow_elapsed ;                   // Reset Counter
+    time_flow_last_measured = currentTime;              // Updates cloopTime
+    stream->print(flow_elapsed, DEC);
+    stream->print(" Pulse total, ");
+    stream->print(litres, DEC);
+    stream->print(" Litres total, ");
+    stream->print(l_hour, DEC);            // Print litres/hour
+    stream->print(" L/hour  average recently. </br>\n");
 }

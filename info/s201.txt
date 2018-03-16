@@ -6,7 +6,7 @@
 
 */
 
-volatile int  flow_frequency;  // Measures flow meter pulses
+volatile int  flow_elapsed;  // Measures flow meter pulses
 unsigned int  l_hour;          // Calculated litres/hour
 unsigned char flowmeter = 2;  // Flow Meter Pin number
 unsigned long currentTime;
@@ -14,7 +14,7 @@ unsigned long cloopTime;
 
 void flow ()                  // Interruot function
 {
-   flow_frequency++;
+   flow_elapsed++;
 }
 
 void setup()
@@ -36,8 +36,8 @@ void loop ()
    {
       cloopTime = currentTime;              // Updates cloopTime
       // Pulse frequency (Hz) = 7.5Q, Q is flow rate in L/min. (Results in +/- 3% range)
-      l_hour = (flow_frequency * 60 / 7.5); // (Pulse frequency x 60 min) / 7.5Q = flow rate in L/hour
-      flow_frequency = 0;                   // Reset Counter
+      l_hour = (flow_elapsed * 60 / 7.5); // (Pulse frequency x 60 min) / 7.5Q = flow rate in L/hour
+      flow_elapsed = 0;                   // Reset Counter
       Serial.print(l_hour, DEC);            // Print litres/hour
       Serial.println(" L/hour");
    }
