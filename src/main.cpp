@@ -29,6 +29,7 @@
 #define NTP_SYNC_PERIOD 300000
 #define NTP_RETRY_ON_ERROR_PERIOD 5000
 #define TEMP_UPDATE_PERIOD 30000
+#define FLOW_MEAUSRE_PULSE_1L 516
 #define FLOW_MEASURE_INTERRUPT 4
 #define FLOW_MEASURE_PIN 19
 DHT dht11Sensor(DHT11_PIN, DHT11);
@@ -485,9 +486,9 @@ void setup_Flow_Control() {
 
 void countFlowControl(Stream *stream) {
     currentTime = millis();
-    float litres = flow_elapsed / 7.5 / 60.0;
+    float litres = flow_elapsed / FLOW_MEAUSRE_PULSE_1L;
 // Pulse frequency (Hz) = 7.5Q, Q is flow rate in L/min. (Results in +/- 3% range)
-    l_hour = ((flow_elapsed - flow_last_measured) * 60 / 7.5 * 1000.0 /
+    l_hour = ((flow_elapsed - flow_last_measured) *3600.0 /FLOW_MEAUSRE_PULSE_1L * 1000.0 /
               (currentTime - time_flow_last_measured)); // (Pulse frequency x 60 min) / 7.5Q = flow rate in L/hour
     flow_last_measured = flow_elapsed;                   // Reset Counter
     time_flow_last_measured = currentTime;              // Updates cloopTime
