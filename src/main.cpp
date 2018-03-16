@@ -29,6 +29,7 @@
 #define NTP_SYNC_PERIOD 300000
 #define NTP_RETRY_ON_ERROR_PERIOD 5000
 #define TEMP_UPDATE_PERIOD 30000
+#define FLOW_MEASURE_INTERRUPT 2
 #define FLOW_MEASURE_PIN 19
 DHT dht11Sensor(DHT11_PIN, DHT11);
 OneWire ds(DS18B20_CLOCK_PIN);  // on pin 10 (a 4.7K resistor is necessary)
@@ -75,6 +76,7 @@ bool getNtpTime();
 void printDHT11(Stream *stream);
 
 void countFlowControl(Stream *stream);
+
 void setup_Flow_Control();
 
 //////////////////////////////////////////////////////////////////
@@ -118,15 +120,18 @@ void setup() {
             digitalWrite(relayPins[i], HIGH);
     }
     dht11Sensor.begin();
-    pinMode(SOIL_SENSOR_PIN_DIGITAL,INPUT_PULLUP);
+    pinMode(SOIL_SENSOR_PIN_DIGITAL, INPUT_PULLUP);
+    setup_Flow_Control();
 
 }
-    float soilHumidityUnits=0, soilHumidityRaw=0,soilHumidityVoltage=0;
-    bool isSoilHumidityLevel = 0;
-void readSoilSensor(Stream *stream){
+
+float soilHumidityUnits = 0, soilHumidityRaw = 0, soilHumidityVoltage = 0;
+bool isSoilHumidityLevel = 0;
+
+void readSoilSensor(Stream *stream) {
     soilHumidityRaw = analogRead(SOIL_SENSOR_PIN_ANALOG);
-    soilHumidityVoltage=soilHumidityRaw/1024.0*5.0;
-    soilHumidityUnits = map(soilHumidityRaw,550,10,0,100);
+    soilHumidityVoltage = soilHumidityRaw / 1024.0 * 5.0;
+    soilHumidityUnits = map(soilHumidityRaw, 550, 10, 0, 100);
     isSoilHumidityLevel = digitalRead(SOIL_SENSOR_PIN_DIGITAL);
     stream->print("    SoilHumidity:");
     stream->print(soilHumidityRaw);
@@ -457,32 +462,34 @@ void sendNTPpacket(IPAddress &address) {
     udp.endPacket();
 }
 
-volatile int  flow_elapsed;  // Measures flow meter pulses
+volatile int flow_elapsed;  // Measures flow meter pulses
 int flow_last_measured = 0;
-unsigned int  l_hour;          // Calculated litres/hour
-unsigned char flowmeter = 2;  // Flow Meter Pin number
+unsigned int l_hour;          // Calculated litres/hour
 unsigned long currentTime;
 unsigned long time_flow_last_measured;
 
 
-void flow ()                  // Interruot function
+void flow()                  // Interruot function
 {
     flow_elapsed++;
 }
+
 void setup_Flow_Control() {
 
-    pinMode(flowmeter, INPUT);
-    attachInterrupt(FLOW_MEASURE_PIN, flow, RISING);
+    pinMode(FLOW_MEASURE_PIN, INPUT);
+    attachInterrupt(FLOW_MEASURE_INTERRUPT, flow, RISING);
     sei();                            // Enable interrupts
     currentTime = millis();
     time_flow_last_measured = currentTime;
 }
+
 void countFlowControl(Stream *stream) {
     currentTime = millis();
-    float litres = flow_elapsed/7.5/60.0;
+    float litres = flow_elapsed / 7.5 / 60.0;
 // Pulse frequency (Hz) = 7.5Q, Q is flow rate in L/min. (Results in +/- 3% range)
-    l_hour = ((flow_elapsed-flow_last_measured) * 60 / 7.5*1000.0/(currentTime - time_flow_last_measured)); // (Pulse frequency x 60 min) / 7.5Q = flow rate in L/hour
-    flow_last_measured = flow_elapsed ;                   // Reset Counter
+    l_hour = ((flow_elapsed - flow_last_measured) * 60 / 7.5 * 1000.0 /
+              (currentTime - time_flow_last_measured)); // (Pulse frequency x 60 min) / 7.5Q = flow rate in L/hour
+    flow_last_measured = flow_elapsed;                   // Reset Counter
     time_flow_last_measured = currentTime;              // Updates cloopTime
     stream->print(flow_elapsed, DEC);
     stream->print(" Pulse total, ");
