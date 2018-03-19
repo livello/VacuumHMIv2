@@ -115,9 +115,6 @@ void setup() {
     ethernet_setup();
     for (int i = 0; i < RELAYS_NUM; i++) {
         pinMode(relayPins[i], OUTPUT);
-        if (i == 1 || i == 4)
-            digitalWrite(relayPins[i], LOW);
-        else
             digitalWrite(relayPins[i], HIGH);
     }
     dht11Sensor.begin();
