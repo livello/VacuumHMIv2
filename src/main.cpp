@@ -43,7 +43,7 @@ const int relayPins[] = {31, 33, 35, 37, 39, 41};
 
 BME280I2C bme;    // Default : forced mode, standby time = 1000 ms
 BME280::TempUnit tempUnit(BME280::TempUnit_Celsius);
-BME280::PresUnit presUnit(BME280::PresUnit_Pa);
+BME280::PresUnit presUnit(BME280::PresUnit_inHg);
 // Oversampling = pressure ×1, temperature ×1, humidity ×1, filter off,
 float bme280Temperature(NAN), bme280Humidity(NAN), bme280Pressure(NAN);
 float dht11Temperature(NAN), dht11Humidity(NAN);
@@ -235,8 +235,8 @@ void printBME280Data(Stream *stream) {
     stream->print(bme280Humidity);
     stream->print("% RH");
     stream->print("\t\tPressure: ");
-    stream->print(bme280Pressure);
-    stream->println(" Pa");
+    stream->print(bme280Pressure*25.4);
+    stream->println(" mm Hg");
 }
 
 void readTemperature() {
