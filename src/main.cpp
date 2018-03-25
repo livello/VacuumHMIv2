@@ -24,10 +24,12 @@ float temp_DS18B20;
 float humidity_DHT22 = 0, temp_DHT22 = 0;
 OneWire dallas18b20(ONEWIRE_PIN);
 
-const unsigned long postingInterval = 330000;  // интервал между отправками данных в миллисекундах (10 минут)
-uint32_t nextConnectionTime = 20000;           // время последней передачи данных
+//const unsigned long postingInterval = 330000;  // интервал между отправками данных в миллисекундах (10 минут)
+const unsigned long postingInterval = 1000;  // интервал между отправками данных в миллисекундах (10 минут)
+uint32_t nextConnectionTime = 3000;           // время последней передачи данных
 char replyBuffer[160];
-const char *narodmon_host = "narodmon.ru";
+//const char *narodmon_host = "narodmon.ru";
+const char *narodmon_host = "192.168.0.115";
 const int narodmon_port = 8283;
 char numberConversionBuffer[6];
 
