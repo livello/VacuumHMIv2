@@ -13,6 +13,9 @@
 #include <EthernetServer.h>
 #include "OneWire.h"
 
+#define Q(x) #x
+#define QUOTE(x) Q(x)
+
 
 const byte default_ip[] = { 10, 20, 191, 200 };
 const byte default_gateway[] = { 10, 20, 191, 169 };
@@ -29,7 +32,11 @@ const unsigned long postingInterval = 1000;  // интервал между от
 uint32_t nextConnectionTime = 3000;           // время последней передачи данных
 char replyBuffer[160];
 //const char *narodmon_host = "narodmon.ru";
-const char *narodmon_host = "192.168.0.115";
+#ifndef NARODMON_HOST
+const char *narodmon_host = "narodmon.ru";
+#else
+const char *narodmon_host = QUOTE(NARODMON_HOST);
+#endif
 const int narodmon_port = 8283;
 char numberConversionBuffer[6];
 
